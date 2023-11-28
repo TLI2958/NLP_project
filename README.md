@@ -13,7 +13,7 @@
         - [roberta](https://www.kaggle.com/code/manabendrarout/pytorch-roberta-ranking-baseline-jrstc-train)
     
     - training with self-constructed pairs: 
-        - [Das & Das](https://arxiv.org/pdf/2206.13284.pdf) | algorithm: $12 \prod \text{severe toxic} + 9 \prod \text{identity hate} + 8 \prod \text{threat} + 6 \prod \text{insult} + 5 \prod \text{obscene} + 4 \prod \text{toxic}$
+        - [Das & Das](https://arxiv.org/pdf/2206.13284.pdf) | algorithm: $12 \cdot \text{severe toxic} + 9 \cdot \text{identity hate} + 8 \cdot \text{threat} + 6 \cdot \text{insult} + 5 \cdot \text{obscene} + 4 \cdot \text{toxic}$
         
 - Also track train & val loss
     - not classification any more. Do we still report auc_roc, f1, etc.? include them regardless

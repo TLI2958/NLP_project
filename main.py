@@ -160,7 +160,7 @@ def do_eval(eval_dataloader, output_dir, out_file):
         target = batch['target'].to(device)
         with torch.no_grad():
             logits_more_toxic = model(ids_more_toxic, token_type_ids_more_toxic, mask_more_toxic)
-            # also include accuracy
+            ## TODO: But we don't have labels. So which metric to use?
             logits = logits_more_toxic.logits
             predictions = torch.argmax(logits, dim=-1)
             metric_acc.add_batch(predictions=predictions, references=batch["labels_more_toxic"])

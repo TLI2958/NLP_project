@@ -181,6 +181,7 @@ def do_eval(eval_dataloader, output_dir, out_file):
             
         loss = criterion(logits_more_toxic, logits_less_toxic, target)
         loss_history.append(loss.item())
+        
         # batch = {k: v.to(device) for k, v in batch.items()}
         # with torch.no_grad():
         #     outputs = model(**batch)

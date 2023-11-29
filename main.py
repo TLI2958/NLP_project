@@ -217,7 +217,7 @@ def do_eval(eval_dataloader, output_dir, out_file):
 # Created a dataladoer for the augmented training dataset
 def create_augmented_dataloader(args, dataset):
 
-    chosen_dataset = dataset["train"].shuffle(seed=42).select(range(5000))
+    chosen_dataset = dataset["train"].shuffle(seed=seed).select(range(5000))
     augmented_dataset = chosen_dataset.map(custom_transform, batched=True, load_from_cache_file =False)
     augmented_dataset = torch.utils.data.ConcatDataset([dataset, augmented_dataset])
 
@@ -240,7 +240,7 @@ def create_augmented_dataloader(args, dataset):
 def create_transformed_dataloader(args, dataset, debug_transformation):
     # Print 5 random transformed examples
     if debug_transformation:
-        small_dataset = dataset["test"].shuffle(seed=42).select(range(5))
+        small_dataset = dataset["test"].shuffle(seed=seed).select(range(5))
         small_transformed_dataset = small_dataset.map(custom_transform, load_from_cache_file=False)
         for k in range(5):
             print("Original Example ", str(k))
@@ -311,8 +311,8 @@ if __name__ == "__main__":
     # tokenized_dataset = tokenized_dataset.rename_column("label", "labels")
     tokenized_dataset.set_format("torch")
 
-    small_train_dataset = tokenized_dataset["train"].shuffle(seed=42).select(range(4000))
-    small_eval_dataset = tokenized_dataset["test"].shuffle(seed=42).select(range(1000))
+    small_train_dataset = tokenized_dataset["train"].shuffle(seed=seed).select(range(4000))
+    small_eval_dataset = tokenized_dataset["test"].shuffle(seed=seed).select(range(1000))
 
     # Create dataloaders for iterating over the dataset
     if args.debug_train:

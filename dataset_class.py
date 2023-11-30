@@ -62,6 +62,7 @@ class toxic_dataset():
         
         
     def make_pairs(self, indices = np.zeros((1, 2))):
+        ## TODO: need to tackle initial condition
         # terminate condition
         if len(indices) == self.size:
             self.indices = indices
@@ -74,7 +75,8 @@ class toxic_dataset():
                                     size = (self.size - len(indices), 2), 
                                     random_state = self.seed)
         add_ind = np.unique(add_ind, axis = 0)
-        return self.make_pairs(indices = np.hstack((indices, add_ind)))          
+        return self.make_pairs(indices = np.hstack((indices, add_ind))) if len(indices) > 1 \
+            else self.make_pairs(indices = add_ind)          
     
     
     def rearrange(self):

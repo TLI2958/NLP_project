@@ -1,3 +1,4 @@
+## TODO: complete dataset class just in case
 import numpy as np
 import pandas as pd
 import os
@@ -47,9 +48,8 @@ class toxic_dataset():
         downsample non-toxic texts
         """
         no_toxic = self.text[self.toxicity <= threshold]
-        sample_ind = self.rng.integer(0, len(no_toxic), 
-                                        int(len(no_toxic) * rate), 
-                                        random_state = self.seed)
+        sample_ind = self.rng.integers(0, len(no_toxic), 
+                                        int(len(no_toxic) * rate))
         no_toxic = no_toxic.iloc[no_toxic.index[sample_ind]]
         toxic = self.text[self.toxicity > threshold]
         self.text = pd.concat([no_toxic, toxic], axis = 0)
@@ -68,30 +68,36 @@ class toxic_dataset():
             self.indices = indices
             self.rearrange()
             self.reset_all_indices()
+            print(self.text, self.toxicity, self.label)
             print('paired up ...')
             return
 
-        add_ind = self.rng.integer(0, len(self.text), 
-                                    size = (self.size - len(indices), 2), 
-                                    random_state = self.seed)
+        add_ind = self.rng.integers(0, len(self.text), 
+                                    size = (self.size - len(indices), 2))
         add_ind = np.unique(add_ind, axis = 0)
-        return self.make_pairs(indices = np.hstack((indices, add_ind))) if len(indices) > 1 \
+        return self.make_pairs(indices = np.vstack((indices, add_ind))) if len(indices) > 1 \
             else self.make_pairs(indices = add_ind)          
     
     
     def rearrange(self):
         indices = self.indices
-        self.text = pd.concat([self.text.iloc[indices[:,0]], 
-                                  self.text.iloc[indices[:,1]]], 
-                                  columns = ['more_toxic_text', 'less_toxic_text'], axis = 1)
-        self.toxicity = pd.concat([self.toxicity.iloc[indices[:,0]], 
-                                  self.toxicity.iloc[indices[:,1]]], 
-                                  columns = ['toxicity_more_toxic', 'toxicity_less_toxic'],
-                                  axis = 1)
-        self.label = pd.concat([self.label[indices.iloc[:,0]],
-                                   self.label[indices.iloc[:,1]]], 
-                                   columns = ['labels_more_toxic', 'labels_less_toxic'],
-                                   axis = 1)     
+        self.text = pd.concat([self.text.iloc[indices[:,0]].reset_index(drop= True), 
+                                  self.text.iloc[indices[:,1]].reset_index(drop=True)], 
+                              axis = 1)
+        self.text.columns = ['more_toxic_text', 'less_toxic_text']
+        
+        self.toxicity = pd.concat([self.toxicity.loc[indices[:, 0]].reset_index(drop=True),
+                               self.toxicity.loc[indices[:, 1]].reset_index(drop=True)],
+                              axis=1)
+        self.toxicity.columns = ['toxicity_more_toxic', 'toxicity_less_toxic']
+
+        self.label = pd.concat([self.label.loc[indices[:, 0]].reset_index(drop=True),
+                            self.label.loc[indices[:, 1]].reset_index(drop=True)],
+                           axis=1)
+        self.label.columns = ['labels_more_toxic', 'labels_less_toxic']
+
+
+
         swap = self.toxicity.iloc[:,0] <= self.toxicity.iloc[:,1]
         
         self.toxicity.loc[swap, ['toxicity_more_toxic', 'toxicity_less_toxic']] = \
@@ -100,9 +106,9 @@ class toxic_dataset():
         self.text.loc[swap, ['more_toxic_text', 'less_toxic_text']] = \
             self.text.loc[swap, ['less_toxic_text', 'more_toxic_text']].values
         
-        self.label.loc[swap, ['label_more_toxic', 'label_less_toxic']] = \
-            self.label.loc[swap, ['label_less_toxic', 'label_more_toxic']].values
-        
+        self.label.loc[swap, ['labels_more_toxic', 'labels_less_toxic']] = \
+            self.label.loc[swap, ['labels_less_toxic', 'labels_more_toxic']].values
+                
     def make_dataframe(self, down_sample = False, make_pairs = False):
         """
         Run after self.make_pairs

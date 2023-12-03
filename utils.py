@@ -18,7 +18,8 @@ from nltk import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 import pandas as pd
 
-random.seed(0)
+random.seed(1011)
+path = os.getcwd()
 
 # import spacy
 # from SoundsLike.SoundsLike import Search
@@ -26,7 +27,7 @@ random.seed(0)
 # spacy_nlp = spacy.load("en_core_web_sm")
 
 ## homophones dictionary
-homophones = pd.read_json('./NLP/homophones.json', orient = 'split')
+homophones = pd.read_json(f'{path}/homophones.json', orient = 'split')
 homophones_map = dict(zip(homophones.input, homophones.output))
 
 # def example_transform(example):

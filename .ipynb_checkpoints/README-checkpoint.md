@@ -12,6 +12,9 @@
     - [+ Ridge Regression](https://www.kaggle.com/code/nkitgupta/jigsaw-ridge-ensemble-tfidf-fasttext-0-868) | no pairs
     - [+ Naive Bayes](https://www.kaggle.com/code/julian3833/jigsaw-incredibly-simple-naive-bayes-0-768) | no pairs
     - [+ Logistic Regression](https://www.kaggle.com/code/kishalmandal/most-detailed-eda-tf-idf-and-logistic-reg/notebook) | do not use. use proba $\to$ score. 
+- RoBERTa
+- BERT
+- M-BERT
     
 ## Questions
 - Are we comparing pairs of texts? If so, we need to construct pairs manually, but by what criterion?

@@ -1,5 +1,6 @@
 kaggle
 tqdm
+bs4
 
 wordcloud
 transformers==4.26.1

@@ -145,22 +145,22 @@ def do_train(args, model, train_dataloader, scheduler = 'CosineAnnealingLR', sav
                 softmaxes = F.softmax(more_toxic_outputs.logits, dim=1)
                 confidences, predictions = torch.max(softmaxes, 1)
                 
-                metric_acc.add_batch(predictions=predictions, references=batch["labels_more_toxic"])
-                metric_roc_auc.add_batch(predictions=predictions, references=batch["labels_more_toxic"])
-                metric_precision.add_batch(predictions=predictions, references=batch["labels_more_toxic"])
-                metric_recall.add_batch(predictions=predictions, references=batch["labels_more_toxic"])
-                metric_F1.add_batch(predictions=predictions, references=batch["labels_more_toxic"])
+                metric_acc.add_batch(predictions=predictions, references=data["labels_more_toxic"])
+                metric_roc_auc.add_batch(predictions=predictions, references=data["labels_more_toxic"])
+                metric_precision.add_batch(predictions=predictions, references=data["labels_more_toxic"])
+                metric_recall.add_batch(predictions=predictions, references=data["labels_more_toxic"])
+                metric_F1.add_batch(predictions=predictions, references=data["labels_more_toxic"])
                 file.write(f'{confidences.to_list()}\t{predictions.to_list()}\t{more_toxic_labels.to_list()}\n')
                 
                 ## less_toxic
                 softmaxes = F.softmax(less_toxic_outputs.logits, dim=1)
                 confidences, predictions = torch.max(softmaxes, 1)
                 
-                metric_acc.add_batch(predictions=predictions, references=batch["labels_less_toxic"])
-                metric_roc_auc.add_batch(predictions=predictions, references=batch["labels_less_toxic"])
-                metric_precision.add_batch(predictions=predictions, references=batch["labels_less_toxic"])
-                metric_recall.add_batch(predictions=predictions, references=batch["labels_less_toxic"])
-                metric_F1.add_batch(predictions=predictions, references=batch["labels_less_toxic"])
+                metric_acc.add_batch(predictions=predictions, references=data["labels_less_toxic"])
+                metric_roc_auc.add_batch(predictions=predictions, references=data["labels_less_toxic"])
+                metric_precision.add_batch(predictions=predictions, references=data["labels_less_toxic"])
+                metric_recall.add_batch(predictions=predictions, references=data["labels_less_toxic"])
+                metric_F1.add_batch(predictions=predictions, references=data["labels_less_toxic"])
                 file.write(f'{confidences.to_list()}\t{predictions.to_list()}\t{less_toxic_labels.to_list()}\n')
                 
                 ## track loss
@@ -228,7 +228,7 @@ def do_eval(eval_dataloader, output_dir, out_file):
             loss_tracker['loss'].append(loss.item())
             loss_tracker['count'] += 1
             loss_tracker['avg'].append(sum(loss_tracker['loss']) / loss_tracker['count'])
-            metric_acc.add_batch(predictions= (logits_more_toxic >= logits_less_toxic).long(), references=batch["target"])
+            metric_acc.add_batch(predictions= (logits_more_toxic >= logits_less_toxic).long(), references=data["target"])
     
     with open(os.path.join(save_dir, "eval_metrics.pkl"), "wb") as pickle_file:
         pickle.dump(metric_acc.compute(), pickle_file)

@@ -2,6 +2,10 @@
 import numpy as np
 import pandas as pd
 import os
+
+from bs4 import BeautifulSoup
+from collections import defaultdict
+import re
 # import wordcloud
 
 ## TODO: complete dataset class just in case
@@ -45,7 +49,7 @@ class toxic_dataset():
         self.toxicity.reset_index(drop = True, inplace = True)
         self.label.reset_index(drop = True, inplace = True)
         
-    def down_sample(self, threshold, rate = 0.1):
+    def down_sample(self, threshold = 0.001, rate = 0.1):
         """
         downsample non-toxic texts
         """
@@ -108,7 +112,7 @@ class toxic_dataset():
             self.label.loc[swap, ['labels_less_toxic', 'labels_more_toxic']].values
         
                 
-    def make_dataframe(self, down_sample = False, make_pairs = False, threshold = 0.001):
+    def make_dataframe(self, down_sample = False, make_pairs = False, threshold = 0.2):
         """
         Run after self.make_pairs
         """
@@ -119,9 +123,45 @@ class toxic_dataset():
         self.df = pd.concat([self.text, self.toxicity, self.label], axis = 1)
         print('made new dataframe ...')
         
-        
     def graph(self):
         """
         placeholder for wordcloud
         """
         pass
+    
+
+def text_cleaning(text):
+        # credit: https://www.kaggle.com/code/manabendrarout/pytorch-roberta-ranking-baseline-jrstc-train
+        # util functions common in notebooks
+        '''
+        Cleans text into a basic form for NLP. Operations include the following:-
+        1. Remove special charecters like &, #, etc
+        2. Removes extra spaces
+        3. Removes embedded URL links
+        4. Removes HTML tags
+        5. Removes emojis
+
+        text - Text piece to be cleaned.
+        '''
+        template = re.compile(r'https?://\S+|www\.\S+') #Removes website links
+        text = template.sub(r'', text)
+
+        soup = BeautifulSoup(text, 'lxml') #Removes HTML tags
+        only_text = soup.get_text()
+        text = only_text
+
+        emoji_pattern = re.compile("["
+                                   u"\U0001F600-\U0001F64F"  # emoticons
+                                   u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                                   u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                                   u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                                   u"\U00002702-\U000027B0"
+                                   u"\U000024C2-\U0001F251"
+                                   "]+", flags=re.UNICODE)
+        text = emoji_pattern.sub(r'', text)
+
+        text = re.sub(r"[^a-zA-Z\d]", " ", text) #Remove special Charecters
+        text = re.sub(' +', ' ', text) #Remove Extra Spaces
+        text = text.strip() # remove spaces at the beginning and at the end of string
+
+        return text

@@ -3,7 +3,7 @@ from collections import defaultdict
 from json import load
 import datasets
 import numpy as np
-from datasets import load_dataset
+from datasets import DatasetDict, load_dataset, Features, Value
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification
@@ -34,24 +34,18 @@ def seed_everything(seed=RANDOM_SEED):
     torch.backends.cudnn.benchmark = True
     
 
-# Tokenize the input
-# https://www.kaggle.com/code/manabendrarout/pytorch-roberta-ranking-baseline-jrstc-train
-
-def tokenize_function(examples, is_training = True):
-    more_toxic, less_toxic = examples['more_toxic_text'], examples['less_toxic_text']
+def tokenize_function(examples):
     tokenized_more_toxic = tokenizer(
-        more_toxic,
-        add_special_tokens=True,
+        examples['more_toxic_text'],
         truncation=True,
         max_length=tokenizer.model_max_length,
-        padding='max_length',
+        padding="max_length",
         return_attention_mask=True,
         return_token_type_ids=True,
     )
 
     tokenized_less_toxic = tokenizer(
-        less_toxic,
-        add_special_tokens=True,
+        examples['less_toxic_text'],
         truncation=True,
         max_length=tokenizer.model_max_length,
         padding='max_length',
@@ -61,25 +55,12 @@ def tokenize_function(examples, is_training = True):
     ids_more_toxic = tokenized_more_toxic['input_ids']
     mask_more_toxic = tokenized_more_toxic['attention_mask']
     token_type_ids_more_toxic = tokenized_more_toxic['token_type_ids']
-    if is_training:
-        labels_more_toxic = tokenizen_more_toxic['labels']
     
     ids_less_toxic = tokenized_less_toxic['input_ids']
     mask_less_toxic = tokenized_less_toxic['attention_mask']
     token_type_ids_less_toxic = tokenized_less_toxic['token_type_ids']
-    if is_training:
-        labels_less_toxic = tokenizen_less_toxic['labels']
     
-    return {'ids_more_toxic': torch.tensor(ids_more_toxic, dtype=torch.long),
-            'mask_more_toxic': torch.tensor(mask_more_toxic, dtype=torch.long),
-            'token_type_ids_more_toxic': torch.tensor(token_type_ids_more_toxic, dtype=torch.long),
-            'labels_more_toxic': torch.tensor(labels_more_toxic, dtype=torch.long),
-            'ids_less_toxic': torch.tensor(ids_less_toxic, dtype=torch.long),
-            'mask_less_toxic': torch.tensor(mask_less_toxic, dtype=torch.long),
-            'token_type_ids_less_toxic': torch.tensor(token_type_ids_less_toxic, dtype=torch.long),
-            'target': torch.tensor(1, dtype=torch.float),
-            'labels_less_toxic': torch.tensor(labels_less_toxic, dtype=torch.long)} if is_training else \
-            {'ids_more_toxic': torch.tensor(ids_more_toxic, dtype=torch.long),
+    return  {'ids_more_toxic': torch.tensor(ids_more_toxic, dtype=torch.long),
             'mask_more_toxic': torch.tensor(mask_more_toxic, dtype=torch.long),
             'token_type_ids_more_toxic': torch.tensor(token_type_ids_more_toxic, dtype=torch.long),
             'ids_less_toxic': torch.tensor(ids_less_toxic, dtype=torch.long),
@@ -317,8 +298,7 @@ if __name__ == "__main__":
     global tokenizer
     # suppose we are in /scratch/<netID>
     ## TODO: we need to create a dataset object, combining train and val
-    data_path = os.getcwd() + '/data'
-
+    data_path =  '/scratch/' + os.environ.get("USER", "") + '/data/'
     seed_everything()
 
     # Device
@@ -329,15 +309,13 @@ if __name__ == "__main__":
 
     # Tokenize the dataset
     ## load train and val into load_dataset
-    train_set, val_set = 'jigsaw_training/train_paired_cleaned.csv', 'jigsaw_validation/val_cleaned.csv' 
-    dataset = load_dataset('csv', data_files={'train': os.path.join(data_path, train_set),
-                                              'test': os.path.join(data_path, val_set)})
-    tokenized_dataset = dataset.map(tokenize_function, batched=True)
-
+    dataset = DatasetDict.load_from_disk(data_path)
+    tokenized_dataset = dataset.map(tokenize_function, batched = True)
+    
     # Prepare dataset for use by model
     tokenized_dataset = tokenized_dataset.remove_columns(["more_toxic_text", "less_toxic_text"])
     tokenized_dataset.set_format("torch")
-
+    
     small_train_dataset = tokenized_dataset["train"].shuffle(seed = RANDOM_SEED).select(range(4000))
     small_eval_dataset = tokenized_dataset["test"].shuffle(seed = RANDOM_SEED).select(range(1000))
 

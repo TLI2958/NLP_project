@@ -18,7 +18,7 @@
     - seed = 1011
     - downsample with threshold 0.01, rate = 0.1
     - make pairs: 1e5
-    - text cleaning (optional): see [text_clean](https://github.com/TLI2958/NLP_project/blob/main/text_clean.py
+    - text cleaning (optional): see [text_clean](https://github.com/TLI2958/NLP_project/blob/main/text_clean.py)
         - training set should now be downsampled, paired, and cleaned, named `train_paired_cleaned.json`
         - val set should be cleaned, named `val_cleaned.json`
     - create DataDict object (optional)
@@ -30,7 +30,7 @@
     - [ ] debug
 
 - [ ] Run baseline models
-  - [ ] [TF-IDF](https://github.com/TLI2958/NLP_project/blob/main/TFIDF.ipynb)
+    - [ ] [TF-IDF](https://github.com/TLI2958/NLP_project/blob/main/TFIDF.ipynb)
     - [ ] BERT-cased
     - [ ] RoBERTa
     - [ ] M-BERT

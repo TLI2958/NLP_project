@@ -11,12 +11,13 @@ from torch.optim import AdamW
 from transformers import get_scheduler
 import torch
 from torch.nn import functional as F
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import evaluate
 import random
 import argparse
 import pickle
 from utils import *
+from BertDataSet import *
 import os
 
 
@@ -34,39 +35,13 @@ def seed_everything(seed=RANDOM_SEED):
     torch.backends.cudnn.benchmark = True
     
 
-def tokenize_function(examples):
-    tokenized_more_toxic = tokenizer(
-        examples['more_toxic_text'],
-        truncation=True,
-        max_length=tokenizer.model_max_length,
-        padding="max_length",
-        return_attention_mask=True,
-        return_token_type_ids=True,
-    )
+def small_data_set(dataset, split, size = 100):
+    rng = np.random.default_rng(seed = RANDOM_SEED)
+    small_set = [dataset[split][int(i)] for i in rng.integers(0, len(dataset[split]), size = size)]
+    small_dataset = Dataset.from_list(small_set)
 
-    tokenized_less_toxic = tokenizer(
-        examples['less_toxic_text'],
-        truncation=True,
-        max_length=tokenizer.model_max_length,
-        padding='max_length',
-        return_attention_mask=True,
-        return_token_type_ids=True,
-    )
-    ids_more_toxic = tokenized_more_toxic['input_ids']
-    mask_more_toxic = tokenized_more_toxic['attention_mask']
-    token_type_ids_more_toxic = tokenized_more_toxic['token_type_ids']
-    
-    ids_less_toxic = tokenized_less_toxic['input_ids']
-    mask_less_toxic = tokenized_less_toxic['attention_mask']
-    token_type_ids_less_toxic = tokenized_less_toxic['token_type_ids']
-    
-    return  {'ids_more_toxic': torch.tensor(ids_more_toxic, dtype=torch.long),
-            'mask_more_toxic': torch.tensor(mask_more_toxic, dtype=torch.long),
-            'token_type_ids_more_toxic': torch.tensor(token_type_ids_more_toxic, dtype=torch.long),
-            'ids_less_toxic': torch.tensor(ids_less_toxic, dtype=torch.long),
-            'mask_less_toxic': torch.tensor(mask_less_toxic, dtype=torch.long),
-            'token_type_ids_less_toxic': torch.tensor(token_type_ids_less_toxic, dtype=torch.long),
-            'target': torch.tensor(1, dtype=torch.float)} 
+    return small_dataset
+
     
 # Marginal Ranking Loss
 # margin is a hyperparam to tune
@@ -77,10 +52,12 @@ def criterion(more_toxic, less_toxic, target, margin = 0):
 
 
 # Core training function
-def do_train(args, model, train_dataloader, scheduler = 'CosineAnnealingLR', save_dir="/.out"):
+def do_train(args, model, train_dataloader, scheduler = 'CosineAnnealingLR', save_dir=args.save_dir):
     # scheduler
     # CosineAnnealingLR: https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
     # CosineAnnealingWarmRestarts: https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingWarmRestarts.html
+    os.makedirs(save_dir, exist_ok=True)
+    
     optimizer = AdamW(model.parameters(), lr=args.learning_rate)
     num_epochs = args.num_epochs
     num_training_steps = num_epochs * len(train_dataloader)
@@ -108,8 +85,6 @@ def do_train(args, model, train_dataloader, scheduler = 'CosineAnnealingLR', sav
                 ## ref: https://www.kaggle.com/code/debarshichanda/pytorch-w-b-jigsaw-starter 
                 
                 ## use MarginRankingLoss
-                ## MarginRankingLoss
-                ## MarginRankingLoss
                 more_toxic_ids = data['ids_more_toxic'].to(device, dtype=torch.long)
                 more_toxic_mask = data['mask_more_toxic'].to(device, dtype=torch.long)
                 more_toxic_labels = data['labels_more_toxic'].to(device, dtype=torch.long)
@@ -168,7 +143,7 @@ def do_train(args, model, train_dataloader, scheduler = 'CosineAnnealingLR', sav
         print("Training completed...")
         print("Saving Model....")
         ## currently not compare models by epoch
-        model.save_pretrained(save_dir)
+        model.save_pretrained(args.model_dir)
     file.close()   
     
     # save metrics
@@ -221,52 +196,65 @@ def do_eval(eval_dataloader, output_dir, out_file):
     print(f'avg eval loss = {loss_tracker["avg"][-1]}\navg accuracy = {metric_acc.compute()}')
     return 
 
-
-
-# Created a dataladoer for the augmented training dataset
-def create_augmented_dataloader(args, dataset):
-
-    chosen_dataset = dataset["train"].shuffle(seed = RANDOM_SEED).select(range(5000))
-    augmented_dataset = chosen_dataset.map(custom_transform, batched=True, load_from_cache_file =False)
-    augmented_dataset = torch.utils.data.ConcatDataset([dataset, augmented_dataset])
-
-    # tokenize, remove, rename
-    augmented_tokenized_dataset = augmented_dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
-    ## TODO: suppose we have such dataset
-    augmented_tokenized_dataset = augmented_tokenized_dataset.remove_columns(["more_toxic_text", "less_toxic_text"])
-    augmented_tokenized_dataset.set_format("torch")
-    augmented_val_dataset = augmented_tokenized_dataset
-    # create aug dataloader
-    train_dataloader = DataLoader(augmented_val_dataset, shuffle = True, batch_size=args.batch_size)
-
-    return train_dataloader
-
-
-# Create a dataloader for the transformed test set
-def create_transformed_dataloader(args, dataset, debug_transformation):
+# Created a dataloader for the augmented training dataset
+def create_augmented_dataloader(args, train_dataset):
     # Print 5 random transformed examples
-    if debug_transformation:
-        small_dataset = dataset["test"].shuffle(seed = RANDOM_SEED).select(range(5))
-        small_transformed_dataset = small_dataset.map(custom_transform, load_from_cache_file=False)
+    if debug_augmentation:
+        small_train_dataset = small_data_set(train_dataset, 'train')
+        small_augmented_dataset = small_dataset.map(custom_transform, load_from_cache_file=False)
         for k in range(5):
             print("Original Example ", str(k))
             print(small_dataset[k])
             print("\n")
-            print("Transformed Example ", str(k))
-            print(small_transformed_dataset[k])
+            print("Augmented Example ", str(k))
+            print(small_augmented_dataset[k])
             print('=' * 30)
 
         exit()
 
-    transformed_dataset = dataset["test"].map(custom_transform, load_from_cache_file=False)
-    transformed_tokenized_dataset = transformed_dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
-    transformed_tokenized_dataset = transformed_tokenized_dataset.remove_columns(["more_toxic_text", "less_toxic_text"])
-    transformed_tokenized_dataset.set_format("torch")
+    chosen_dataset = train_dataset["train"].shuffle(seed=RANDOM_SEED).select(range(5000))
+    augmented_dataset = chosen_dataset.map(custom_transform, batched=True, load_from_cache_file=False)
+    augmented_dataset = torch.utils.data.ConcatDataset([dataset["train"], augmented_dataset])
 
-    transformed_val_dataset = transformed_tokenized_dataset
-    eval_dataloader = DataLoader(transformed_val_dataset, batch_size=args.batch_size)
+    # Tokenize, remove, rename
+    augmented_tokenized_dataset = BERTDataset(
+        more_toxic=augmented_dataset["more_toxic_text"],
+        less_toxic=augmented_dataset["less_toxic_text"],
+        labels_more_toxic=augmented_dataset["labels_more_toxic"],
+        labels_less_toxic=augmented_dataset["labels_less_toxic"],
+    )
 
-    return eval_dataloader
+    augmented_tokenized_dataset.set_format("torch")
+    augmented_train_dataloader = DataLoader(augmented_tokenized_dataset, shuffle=True, batch_size=args.batch_size)
+
+    return augmented_train_dataloader
+
+
+# Create a dataloader for the transformed test set
+# def create_transformed_dataloader(args, dataset, debug_transformation):
+#     # Print 5 random transformed examples
+#     if debug_transformation:
+#         small_dataset = dataset["test"].shuffle(seed = RANDOM_SEED).select(range(5))
+#         small_transformed_dataset = small_dataset.map(custom_transform, load_from_cache_file=False)
+#         for k in range(5):
+#             print("Original Example ", str(k))
+#             print(small_dataset[k])
+#             print("\n")
+#             print("Transformed Example ", str(k))
+#             print(small_transformed_dataset[k])
+#             print('=' * 30)
+
+#         exit()
+
+#     transformed_dataset = dataset["test"].map(custom_transform, load_from_cache_file=False)
+#     transformed_tokenized_dataset = transformed_dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
+#     transformed_tokenized_dataset = transformed_tokenized_dataset.remove_columns(["more_toxic_text", "less_toxic_text"])
+#     transformed_tokenized_dataset.set_format("torch")
+
+#     transformed_val_dataset = transformed_tokenized_dataset
+#     eval_dataloader = DataLoader(transformed_val_dataset, batch_size=args.batch_size)
+
+#     return eval_dataloader
 
 
 if __name__ == "__main__":
@@ -285,19 +273,18 @@ if __name__ == "__main__":
                         help="use a subset for training to debug your training loop")
     parser.add_argument("--debug_transformation", action="store_true",
                         help="print a few transformed examples for debugging")
-    parser.add_argument("--transform_type", type=str, default="butterfinger")
+    parser.add_argument("--debug_augmentation", action="store_true",
+                        help="print a few augmented examples for debugging")
+    parser.add_argument("--aug_type", type=str, default="original")
     parser.add_argument("--learning_rate", type=float, default=5e-5)
     parser.add_argument("--num_epochs", type=int, default=3)
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--is_training", type = bool, default = True, help="Specify whether it's training or evaluation")
-
 
     args = parser.parse_args()
     
     global device
     global tokenizer
-    # suppose we are in /scratch/<netID>
-    ## TODO: we need to create a dataset object, combining train and val
+
     data_path =  '/scratch/' + os.environ.get("USER", "") + '/data/'
     seed_everything()
 
@@ -305,30 +292,54 @@ if __name__ == "__main__":
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     # Load the tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("bert-base-cased") # tokenize
+#     tokenizer = AutoTokenizer.from_pretrained("bert-base-cased") # tokenize
 
     # Tokenize the dataset
     ## load train and val into load_dataset
-    dataset = DatasetDict.load_from_disk(data_path)
-    tokenized_dataset = dataset.map(tokenize_function, batched = True)
-    
-    # Prepare dataset for use by model
-    tokenized_dataset = tokenized_dataset.remove_columns(["more_toxic_text", "less_toxic_text"])
-    tokenized_dataset.set_format("torch")
-    
-    small_train_dataset = tokenized_dataset["train"].shuffle(seed = RANDOM_SEED).select(range(4000))
-    small_eval_dataset = tokenized_dataset["test"].shuffle(seed = RANDOM_SEED).select(range(1000))
+    train_set, val_set = 'jigsaw_training/train_paired_cleaned.csv', 'jigsaw_validation/val_cleaned.csv' 
 
+    train_dataset = load_dataset('csv', data_files = os.path.join(data_path, train_set))
+    val_dataset = load_dataset('csv', data_files = {'test': os.path.join(data_path, val_set)})
+    
+    print('loaded dataset...')
+    train_tokenized_dataset = BERTDataset(
+        more_toxic=train_dataset["train"]["more_toxic_text"],
+        less_toxic=train_dataset["train"]["less_toxic_text"],
+        labels_more_toxic=train_dataset["train"]["labels_more_toxic"],
+        labels_less_toxic=train_dataset["train"]["labels_less_toxic"],
+    )
+
+    test_tokenized_dataset = BERTDataset(
+        more_toxic=val_dataset["test"]["more_toxic_text"],
+        less_toxic=val_dataset["test"]["less_toxic_text"],
+        labels_more_toxic=val_dataset["test"]["labels_more_toxic"],
+        labels_less_toxic=val_dataset["test"]["labels_less_toxic"],
+    )
+
+    print('created BERTDataset class...')
+    
+    small_train_dataset = small_data_set(train_dataset, 'train')
+    small_eval_dataset = small_data_set(val_dataset, 'test')
+    small_train_tokenized = BERTDataset(more_toxic=small_train_dataset['more_toxic_text'],
+                                          less_toxic= small_train_dataset['less_toxic_text'],
+                                          labels_more_toxic= small_train_dataset['labels_more_toxic'],
+                                          labels_less_toxic= small_train_dataset['labels_less_toxic'],)
+    small_eval_tokenized = BERTDataset(more_toxic=small_eval_dataset['more_toxic_text'],
+                                      less_toxic= small_eval_dataset['less_toxic_text'],
+                                      labels_more_toxic= small_eval_dataset['labels_more_toxic'],
+                                      labels_less_toxic= small_eval_dataset['labels_less_toxic'],)
+
+    
     # Create dataloaders for iterating over the dataset
     if args.debug_train:
-        train_dataloader = DataLoader(small_train_dataset, shuffle=True, batch_size=args.batch_size)
-        eval_dataloader = DataLoader(small_eval_dataset, batch_size=args.batch_size)
+        train_dataloader = DataLoader(small_train_tokenized, shuffle=True, batch_size=args.batch_size)
+        eval_dataloader = DataLoader(small_eval_tokenized, batch_size=args.batch_size)
         print(f"Debug training...")
         print(f"len(train_dataloader): {len(train_dataloader)}")
         print(f"len(eval_dataloader): {len(eval_dataloader)}")
     else:
-        train_dataloader = DataLoader(tokenized_dataset["train"], shuffle=True, batch_size=args.batch_size)
-        eval_dataloader = DataLoader(tokenized_dataset["test"], batch_size=args.batch_size)
+        train_dataloader = DataLoader(train_tokenized_dataset, shuffle=True, batch_size=args.batch_size)
+        eval_dataloader = DataLoader(test_tokenized_dataset, batch_size=args.batch_size)
         print(f"Actual training...")
         print(f"len(train_dataloader): {len(train_dataloader)}")
         print(f"len(eval_dataloader): {len(eval_dataloader)}")
@@ -346,7 +357,7 @@ if __name__ == "__main__":
     # Train model on the augmented training dataset
     if args.train_augmented:
         save_dir = os.path.basename(os.path.normpath(args.save_dir))
-        train_dataloader = create_augmented_dataloader(args, dataset)
+        train_dataloader = create_augmented_dataloader(args, train_dataset)
         model = AutoModelForSequenceClassification.from_pretrained(args.checkpoint, num_labels=2)
         model.to(device)
         do_train(args, model, train_dataloader, save_dir=f"{save_dir}")
@@ -356,7 +367,7 @@ if __name__ == "__main__":
     # Evaluate the trained model on the original test dataset
     if args.eval:
         out_file = os.path.basename(os.path.normpath(args.model_dir))
-        out_file = out_file + "_original.txt"
+        out_file = out_file + f"out_{args.aug_type}.txt"
         do_eval(eval_dataloader, args.model_dir, out_file)
         # print(f"Marginal Ranking Loss: {mrl:.4f}")
         # for metric, value in score.items():

@@ -16,7 +16,7 @@ def text_cleaning(text):
     5. Removes emojis
     
     text - Text piece to be cleaned.
-    '''
+    ''' 
     template = re.compile(r'https?://\S+|www\.\S+') #Removes website links
     text = template.sub(r'', text)
     

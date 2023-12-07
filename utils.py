@@ -86,18 +86,6 @@ def butter_finger(text, prob=0.1):
 
 
 def custom_transform(example, homophone_prob = 0.5, butter_finger_prob = 0.1):
-    ################################
-    ##### YOUR CODE BEGINGS HERE ###
-
-    # Design and implement the transformation as mentioned in pdf
-    # You are free to implement any transformation but the comments at the top roughly describe
-    # how you could implement two of them --- synonym replacement and typos.
-
-    # You should update example["text"] using your transformation
-
-    # raise NotImplementedError
-
-    ##### YOUR CODE ENDS HERE ######
     ## Suppose we have a dataset with columns: more_toxic_text & less_toxic_text
     more_toxic_tokens = word_tokenize(example['more_toxic_text'])
     less_toxic_tokens = word_tokenize(example['less_toxic_text'])

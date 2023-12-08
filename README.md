@@ -25,20 +25,18 @@
   - [wordcloud](https://github.com/TLI2958/NLP_project/blob/main/words_visual.ipynb)
 
 
-- [ ] Core Train and Eval script: [main.py](https://github.com/TLI2958/NLP_project/blob/main/main.py)
+- [x] Core Train and Eval script: [main.py](https://github.com/TLI2958/NLP_project/blob/main/main.py)
     - [x] modified for this project
-    - [ ] debug
-        - [x] do_train
-        - [ ] do_eval
+    - [x] debug
 
 - [ ] Run baseline models
     - [x] [TF-IDF](https://github.com/TLI2958/NLP_project/blob/main/TFIDF.ipynb)
-    - [x] BERT-cased
-    - [x] RoBERTa
+    - [x] BERT-cased | 5hrs for 1e5 pairs, 2e5 in total, running ...
+    - [x] RoBERTa | 2.5 - 3hrs for 1e5 instances
     - [ ] M-BERT
 
 - [ ] [Augmentations](https://github.com/GEM-benchmark/NL-Augmenter/tree/main/nlaugmenter/transformations)
-    - random deletion/order switch
+    - random deletion/order switch?
     - [butterfinger + homophones](https://github.com/TLI2958/NLP_project/blob/main/utils.py)
     <!-- - [homophones](https://github.com/GEM-benchmark/NL-Augmenter/blob/main/nlaugmenter/transformations/close_homophones_swap/transformation.py) | but slow. dictionary not useful. -->
     <!-- - [backtranslation](https://github.com/GEM-benchmark/NL-Augmenter/tree/main/nlaugmenter/transformations/back_translation) -->

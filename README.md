@@ -33,8 +33,8 @@
 
 - [ ] Run baseline models
     - [x] [TF-IDF](https://github.com/TLI2958/NLP_project/blob/main/TFIDF.ipynb)
-    - [ ] BERT-cased
-    - [ ] RoBERTa
+    - [x] BERT-cased
+    - [x] RoBERTa
     - [ ] M-BERT
 
 - [ ] [Augmentations](https://github.com/GEM-benchmark/NL-Augmenter/tree/main/nlaugmenter/transformations)
@@ -46,7 +46,7 @@
 - [ ] Run augmented models
     - [ ] TF-IDF
     - [ ] BERT-cased
-    - [ ] RoBERTa
+    - [x] RoBERTa
     - [ ] M-BERT
     
 - [ ] Report

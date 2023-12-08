@@ -86,7 +86,6 @@ def butter_finger(text, prob=0.1):
 
 
 def custom_transform(example, homophone_prob = 0.5, butter_finger_prob = 0.1):
-    ## Suppose we have a dataset with columns: more_toxic_text & less_toxic_text
     more_toxic_tokens = word_tokenize(example['more_toxic_text'])
     less_toxic_tokens = word_tokenize(example['less_toxic_text'])
     

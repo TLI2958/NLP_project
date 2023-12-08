@@ -9,7 +9,7 @@ import copy
 
 ## ref1: https://www.kaggle.com/code/manabendrarout/pytorch-roberta-ranking-baseline-jrstc-train#Dataset
 ## ref2: https://www.kaggle.com/code/debarshichanda/pytorch-w-b-jigsaw-starter/notebook
-## some parts hard-coded by me ...
+## some parts hard-coded by myself ...
 
 class ToxicityModel(nn.Module):
     def __init__(self, checkpoint='bert-base-cased', output_class = 1):

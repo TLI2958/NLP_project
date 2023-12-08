@@ -3,7 +3,7 @@ from collections import defaultdict
 from json import load
 import datasets
 import numpy as np
-from datasets import DatasetDict, load_dataset, Features, Value
+from datasets import Dataset, DatasetDict, load_dataset, Features, Value
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification
@@ -11,7 +11,6 @@ from torch.optim import AdamW, lr_scheduler
 from transformers import get_scheduler
 import torch
 from torch.nn import functional as F
-from torch.nn.
 from tqdm import tqdm
 import evaluate
 import random
@@ -53,7 +52,7 @@ def criterion(more_toxic, less_toxic, target, margin = 0.5):
         (more_toxic, less_toxic, target)
 
 # Core training function
-def do_train(args, model, train_dataloader, save_dir= args.save_dir, label = args.label):
+def do_train(args, model, train_dataloader):
     # scheduler
     # CosineAnnealingLR: https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
     
@@ -73,12 +72,10 @@ def do_train(args, model, train_dataloader, save_dir= args.save_dir, label = arg
     metric_roc_auc = evaluate.load("roc_auc")
     
     ## to calculate ECE/calibration
-    with open(os.path.join(save_dir, f"ECE_{label}.txt"), "w") as file:
+    with open(os.path.join(args.save_dir, f"ECE_{args.label}.txt"), "w") as file:
         file.write("Confidence\tPrediction\tLabel\n")    
         for epoch in range(num_epochs): 
-            for i, data in enumerate(train_dataloader):
-                ## ref: https://www.kaggle.com/code/debarshichanda/pytorch-w-b-jigsaw-starter 
-                
+            for i, data in enumerate(train_dataloader):                
                 ## use MarginRankingLoss
                 more_toxic_ids = data['ids_more_toxic'].to(device, dtype=torch.long)
                 more_toxic_mask = data['mask_more_toxic'].to(device, dtype=torch.long)
@@ -129,16 +126,16 @@ def do_train(args, model, train_dataloader, save_dir= args.save_dir, label = arg
         print("Training completed...")
         print("Saving Model....")
         ## currently not compare models by epoch
-        torch.save(model.state_dict(), f'{save_dir}/trained_{label}.pth')
+        torch.save(model.state_dict(), f'{args.save_dir}/trained_{args.label}.pth')
     file.close()   
     
     # save metrics
-    with open(os.path.join(save_dir, "train_metrics.pkl"), "wb") as pickle_file:
+    with open(os.path.join(args.save_dir, "train_metrics.pkl"), "wb") as pickle_file:
         pickle.dump(score, pickle_file)
     pickle_file.close()
     
     # save loss
-    with open(os.path.join(save_dir, "train_loss_tracker.pkl"), "wb")  as pickle_file:
+    with open(os.path.join(args.save_dir, "train_loss_tracker.pkl"), "wb")  as pickle_file:
         pickle.dump(loss_tracker, pickle_file)
     pickle_file.close()
     return
@@ -189,7 +186,7 @@ def do_eval(eval_dataloader, output_dir, out_file):
 def create_augmented_dataloader(args, train_dataset):
     # Print 5 random transformed examples
     if debug_augmentation:
-        small_train_dataset = small_data_set(train_dataset, 'train')
+        small_train_dataset = small_data_set(train_dataset, 'train', size = 10)
         small_augmented_dataset = small_dataset.map(custom_transform, load_from_cache_file=False)
         for k in range(5):
             print("Original Example ", str(k))
@@ -201,7 +198,8 @@ def create_augmented_dataloader(args, train_dataset):
 
         exit()
 
-    chosen_dataset = train_dataset["train"].shuffle(seed=RANDOM_SEED).select(range(5000))
+    chosen_dataset =  small_data_set(train_dataset, split ='train', size = 10000)
+    
     augmented_dataset = chosen_dataset.map(custom_transform, batched=True, load_from_cache_file=False)
     augmented_dataset = torch.utils.data.ConcatDataset([dataset["train"], augmented_dataset])
 
@@ -214,7 +212,9 @@ def create_augmented_dataloader(args, train_dataset):
     )
 
     augmented_tokenized_dataset.set_format("torch")
-    augmented_train_dataloader = DataLoader(augmented_tokenized_dataset, shuffle=True, batch_size=args.batch_size)
+    augmented_train_dataloader = DataLoader(augmented_tokenized_dataset,
+                                            shuffle=True, num_workers = os.cpu_count(), 
+                                            batch_size=args.batch_size)
 
     return augmented_train_dataloader
 
@@ -255,13 +255,10 @@ if __name__ == "__main__":
     # Device
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-    # Load the tokenizer
-#     tokenizer = AutoTokenizer.from_pretrained("bert-base-cased") # tokenize
-
     # Tokenize the dataset
     ## load train and val into load_dataset
     train_set, val_set = 'jigsaw_training/train_paired_cleaned.csv', 'jigsaw_validation/val_cleaned.csv' 
-
+    print('begin loading...')
     train_dataset = load_dataset('csv', data_files = os.path.join(data_path, train_set))
     val_dataset = load_dataset('csv', data_files = {'test': os.path.join(data_path, val_set)})
     
@@ -296,44 +293,43 @@ if __name__ == "__main__":
     
     # Create dataloaders for iterating over the dataset
     if args.debug_train:
-        train_dataloader = DataLoader(small_train_tokenized, shuffle=True, batch_size=args.batch_size)
-        eval_dataloader = DataLoader(small_eval_tokenized, batch_size=args.batch_size)
+        train_dataloader = DataLoader(small_train_tokenized, shuffle=True, num_workers = os.cpu_count(), batch_size=args.batch_size)
+        eval_dataloader = DataLoader(small_eval_tokenized, num_workers = os.cpu_count(), batch_size=args.batch_size)
         print(f"Debug training...")
         print(f"len(train_dataloader): {len(train_dataloader)}")
         print(f"len(eval_dataloader): {len(eval_dataloader)}")
     else:
-        train_dataloader = DataLoader(train_tokenized_dataset, shuffle=True, batch_size=args.batch_size)
-        eval_dataloader = DataLoader(test_tokenized_dataset, batch_size=args.batch_size)
+        train_dataloader = DataLoader(train_tokenized_dataset, shuffle=True,  num_workers = os.cpu_count(), batch_size=args.batch_size)
+        eval_dataloader = DataLoader(test_tokenized_dataset, num_workers = os.cpu_count(),
+                                     batch_size=args.batch_size)
         print(f"Actual training...")
         print(f"len(train_dataloader): {len(train_dataloader)}")
         print(f"len(eval_dataloader): {len(eval_dataloader)}")
 
     # Train model on the original training dataset
     if args.train:
-        save_dir = os.path.basename(os.path.normpath(args.save_dir))
+        save_dir = args.save_dir
         model = ToxicityModel()
         model.to(device)
-        model.bert.register_forward_hood(getActivation('classifier'))
         
-        do_train(args, model, train_dataloader, save_dir=f"{save_dir}")
+        do_train(args, model, train_dataloader)
         # Change eval dir
         args.model_dir = f"{save_dir}"
 
     # Train model on the augmented training dataset
     if args.train_augmented:
-        save_dir = os.path.basename(os.path.normpath(args.save_dir))
+        save_dir = args.save_dir
         train_dataloader = create_augmented_dataloader(args, train_dataset)
         model = ToxicityModel()
         model.to(device)
-        model.bert.register_forward_hood(getActivation('classifier'))
-
-        do_train(args, model, train_dataloader, save_dir=f"{save_dir}")
+        
+        do_train(args, model, train_dataloader)
         # Change eval dir
         args.model_dir = f"{save_dir}"
 
     # Evaluate the trained model on the original test dataset
     if args.eval:
-        out_file = os.path.basename(os.path.normpath(args.model_dir))
+        out_file = args.model_dir
         out_file = out_file + f"out_{args.aug_type}.txt"
         do_eval(eval_dataloader, args.model_dir, out_file)
         # print(f"Marginal Ranking Loss: {mrl:.4f}")
@@ -342,7 +338,7 @@ if __name__ == "__main__":
 
     # Evaluate the trained model on the transformed test dataset
     if args.eval_transformed:
-        out_file = os.path.basename(os.path.normpath(args.model_dir))
+        out_file = args.model_dir
         out_file = out_file + f"{args.transform_type}.txt"
         eval_transformed_dataloader = create_transformed_dataloader(args, dataset, args.debug_transformation)
         do_eval(eval_transformed_dataloader, args.model_dir, out_file)

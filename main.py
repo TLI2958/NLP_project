@@ -26,6 +26,29 @@ import os
 # Random Seed Initialize
 RANDOM_SEED = 1011
 
+def save_checkpoint(model, optimizer, epoch, i, args):
+    checkpoint_path = f'{args.save_dir}/trained_{args.label}_checkpoint.pth'
+    torch.save({
+        'epoch': epoch,
+        'iteration': i,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, checkpoint_path)
+
+    
+def load_checkpoint(model, optimizer, args):
+    checkpoint_path = f'{args.save_dir}/trained_{args.label}_checkpoint.pth'
+    if os.path.exists(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        epoch = checkpoint['epoch']
+        iteration = checkpoint['iteration']
+        print(f"Checkpoint found. Resuming training from epoch {epoch}, iteration {iteration}.")
+        return model, optimizer, epoch, iteration
+    else:
+        return model, optimizer, 0, 0
+
 def seed_everything(seed=RANDOM_SEED):
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
@@ -55,8 +78,10 @@ def criterion(more_toxic, less_toxic, target, margin = 0.5):
 def do_train(args, model, train_dataloader):
     # scheduler
     # CosineAnnealingLR: https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
-    
+   
     optimizer = AdamW(model.parameters(), lr= args.learning_rate)
+    model, optimizer, start_epoch, start_iteration = load_checkpoint(model, optimizer, args)
+
     num_epochs = args.num_epochs
     num_training_steps = num_epochs * len(train_dataloader)
     scheduler = lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = args.T_max)
@@ -74,51 +99,58 @@ def do_train(args, model, train_dataloader):
     ## to calculate ECE/calibration
     with open(os.path.join(args.save_dir, f"ECE_{args.label}.txt"), "w") as file:
         file.write("Confidence\tPrediction\tLabel\n")    
-        for epoch in range(num_epochs): 
-            for i, data in enumerate(train_dataloader):                
-                ## use MarginRankingLoss
-                more_toxic_ids = data['ids_more_toxic'].to(device, dtype=torch.long)
-                more_toxic_mask = data['mask_more_toxic'].to(device, dtype=torch.long)
-                more_toxic_labels = data['labels_more_toxic'].to(device, dtype=torch.long)
+        for epoch in range(start_epoch, num_epochs): 
+            if epoch > start_epoch:
+                start_iteration = -1
+            for i, data in enumerate(train_dataloader):
+                if i <= start_iteration:
+                    continue
+                else:
+                    ## use MarginRankingLoss
+                    more_toxic_ids = data['ids_more_toxic'].to(device, dtype=torch.long)
+                    more_toxic_mask = data['mask_more_toxic'].to(device, dtype=torch.long)
+                    more_toxic_labels = data['labels_more_toxic'].to(device, dtype=torch.long)
 
-                less_toxic_ids = data['ids_less_toxic'].to(device, dtype=torch.long)
-                less_toxic_mask = data['mask_less_toxic'].to(device, dtype=torch.long)
-                less_toxic_labels = data['labels_less_toxic'].to(device, dtype=torch.long)
-                targets = data['target'].to(device, dtype=torch.long)
-                
-                more_toxic_single, more_toxic_outputs = model(more_toxic_ids, more_toxic_mask)
-                less_toxic_single, less_toxic_outputs = model(less_toxic_ids, less_toxic_mask)
-                            
-                ## more_toxic
-                confidences, predictions = torch.max(more_toxic_outputs, axis = -1, keepdim = True)
-                predictions = predictions.to(dtype = torch.float32)
-            
-                metric_acc.add_batch(predictions=predictions, references= more_toxic_labels)
-                metric_roc_auc.add_batch(prediction_scores =predictions.to(dtype = torch.int32), references = more_toxic_labels.to(dtype = torch.int32))
-                file.write(f'{confidences.tolist()}\t{predictions.tolist()}\t{more_toxic_labels.tolist()}\n')
-                
-                ## less_toxic
-                confidences, predictions = torch.max(less_toxic_outputs, -1, keepdim = True)
-                predictions = predictions.to(dtype = torch.float32)
+                    less_toxic_ids = data['ids_less_toxic'].to(device, dtype=torch.long)
+                    less_toxic_mask = data['mask_less_toxic'].to(device, dtype=torch.long)
+                    less_toxic_labels = data['labels_less_toxic'].to(device, dtype=torch.long)
+                    targets = data['target'].to(device, dtype=torch.long)
 
-                metric_acc.add_batch(predictions=predictions, references=less_toxic_labels)
-                metric_roc_auc.add_batch(prediction_scores =predictions, references=less_toxic_labels)
-                file.write(f'{confidences.tolist()}\t{predictions.tolist()}\t{less_toxic_labels.tolist()}\n')
-                
-                ## track loss
-                loss = criterion(more_toxic_single, less_toxic_single, targets.unsqueeze(1))
-                loss_tracker['loss'].append(loss.item())
-                loss_tracker['count'][-1] += 1
-                loss_tracker['avg'].append(sum(loss_tracker['loss']) / loss_tracker['count'][-1])
+                    more_toxic_single, more_toxic_outputs = model(more_toxic_ids, more_toxic_mask)
+                    less_toxic_single, less_toxic_outputs = model(less_toxic_ids, less_toxic_mask)
 
-                ## backpropogation
-                loss.backward()
-                optimizer.step()
-                scheduler.step()
+                    ## more_toxic
+                    confidences, predictions = torch.max(more_toxic_outputs, axis = -1, keepdim = True)
+                    predictions = predictions.to(dtype = torch.float32)
 
-                optimizer.zero_grad()
-                progress_bar.update(1)
-                
+                    metric_acc.add_batch(predictions=predictions, references= more_toxic_labels)
+                    metric_roc_auc.add_batch(prediction_scores =predictions.to(dtype = torch.int32), references = more_toxic_labels.to(dtype = torch.int32))
+                    file.write(f'{confidences.tolist()}\t{predictions.tolist()}\t{more_toxic_labels.tolist()}\n')
+
+                    ## less_toxic
+                    confidences, predictions = torch.max(less_toxic_outputs, -1, keepdim = True)
+                    predictions = predictions.to(dtype = torch.float32)
+
+                    metric_acc.add_batch(predictions=predictions, references=less_toxic_labels)
+                    metric_roc_auc.add_batch(prediction_scores =predictions, references=less_toxic_labels)
+                    file.write(f'{confidences.tolist()}\t{predictions.tolist()}\t{less_toxic_labels.tolist()}\n')
+
+                    ## track loss
+                    loss = criterion(more_toxic_single, less_toxic_single, targets.unsqueeze(1))
+                    loss_tracker['loss'].append(loss.item())
+                    loss_tracker['count'][-1] += 1
+                    loss_tracker['avg'].append(sum(loss_tracker['loss']) / loss_tracker['count'][-1])
+
+                    ## backpropogation
+                    loss.backward()
+                    optimizer.step()
+                    scheduler.step()
+
+                    optimizer.zero_grad()
+                    progress_bar.update(1)
+                    if i % 2000:
+                        save_checkpoint(model, optimizer, epoch, i, args)
+
         score_acc = metric_acc.compute()
         score_roc_auc = metric_roc_auc.compute()
         metric_name = ['accuracy', 'roc_auc']
@@ -198,7 +230,7 @@ def create_augmented_dataloader(args, train_dataset):
 
         exit()
 
-    chosen_dataset =  small_data_set(train_dataset, split ='train', size = 10000)
+    chosen_dataset =  small_data_set(train_dataset, split ='train', size = 5000)
     
     augmented_dataset = chosen_dataset.map(custom_transform, batched=True, load_from_cache_file=False)
     augmented_dataset = torch.utils.data.ConcatDataset([dataset["train"], augmented_dataset])
@@ -311,7 +343,7 @@ if __name__ == "__main__":
         save_dir = args.save_dir
         model = ToxicityModel()
         model.to(device)
-        
+      
         do_train(args, model, train_dataloader)
         # Change eval dir
         args.model_dir = f"{save_dir}"

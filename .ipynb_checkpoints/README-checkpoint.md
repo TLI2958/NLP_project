@@ -21,7 +21,7 @@
     - text cleaning (optional): see [text_clean](https://github.com/TLI2958/NLP_project/blob/main/text_clean.py)
         - training set should now be downsampled, paired, and cleaned, named `train_paired_cleaned.csv`
         - val set should be cleaned, named `val_cleaned.csv`
-    - create DataDict object (optional)
+    - dummy labels (optional)
   - [wordcloud](https://github.com/TLI2958/NLP_project/blob/main/words_visual.ipynb)
 
 

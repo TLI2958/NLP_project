@@ -17,10 +17,10 @@
 - [x] Preprocessing: see [preprocessing.ipynb](https://github.com/TLI2958/NLP_project/blob/main/preprocessing.ipynb) 
     - seed = 1011
     - downsample with threshold 0.01, rate = 0.1
-    - make pairs: 1e5
+    - make pairs (optional): 1e5
     - text cleaning (optional): see [text_clean](https://github.com/TLI2958/NLP_project/blob/main/text_clean.py)
-        - training set should now be downsampled, paired, and cleaned, named `train_paired_cleaned.json`
-        - val set should be cleaned, named `val_cleaned.json`
+        - training set should now be downsampled, paired, and cleaned, named `train_paired_cleaned.csv`
+        - val set should be cleaned, named `val_cleaned.csv`
     - create DataDict object (optional)
   - [wordcloud](https://github.com/TLI2958/NLP_project/blob/main/words_visual.ipynb)
 
@@ -28,9 +28,11 @@
 - [ ] Core Train and Eval script: [main.py](https://github.com/TLI2958/NLP_project/blob/main/main.py)
     - [x] modified for this project
     - [ ] debug
+        - [x] do_train
+        - [ ] do_eval
 
 - [ ] Run baseline models
-    - [ ] [TF-IDF](https://github.com/TLI2958/NLP_project/blob/main/TFIDF.ipynb)
+    - [x] [TF-IDF](https://github.com/TLI2958/NLP_project/blob/main/TFIDF.ipynb)
     - [ ] BERT-cased
     - [ ] RoBERTa
     - [ ] M-BERT

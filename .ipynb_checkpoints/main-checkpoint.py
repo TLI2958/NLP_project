@@ -7,10 +7,11 @@ from datasets import DatasetDict, load_dataset, Features, Value
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification
-from torch.optim import AdamW
+from torch.optim import AdamW, lr_scheduler
 from transformers import get_scheduler
 import torch
 from torch.nn import functional as F
+from torch.nn.
 from tqdm import tqdm
 import evaluate
 import random
@@ -18,6 +19,7 @@ import argparse
 import pickle
 from utils import *
 from BertDataSet import *
+from ToxicityModel import *
 import os
 
 
@@ -46,39 +48,32 @@ def small_data_set(dataset, split, size = 100):
 # Marginal Ranking Loss
 # margin is a hyperparam to tune
 # https://pytorch.org/docs/stable/generated/torch.nn.MarginRankingLoss.html
-def criterion(more_toxic, less_toxic, target, margin = 0):
+def criterion(more_toxic, less_toxic, target, margin = 0.5):
     return torch.nn.MarginRankingLoss(margin = margin)\
         (more_toxic, less_toxic, target)
 
-
 # Core training function
-def do_train(args, model, train_dataloader, scheduler = 'CosineAnnealingLR', save_dir=args.save_dir):
+def do_train(args, model, train_dataloader, save_dir= args.save_dir, label = args.label):
     # scheduler
     # CosineAnnealingLR: https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
-    # CosineAnnealingWarmRestarts: https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingWarmRestarts.html
-    os.makedirs(save_dir, exist_ok=True)
     
-    optimizer = AdamW(model.parameters(), lr=args.learning_rate)
+    optimizer = AdamW(model.parameters(), lr= args.learning_rate)
     num_epochs = args.num_epochs
     num_training_steps = num_epochs * len(train_dataloader)
-    lr_scheduler = get_scheduler(
-        name=f"{scheduler}", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
-    )
+    scheduler = lr_scheduler.CosineAnnealingLR(optimizer = optimizer, T_max = args.T_max)
+    
     model.train()
     progress_bar = tqdm(range(num_training_steps))
     
     ## to track training loss
-    loss_tracker = defaultdict(lambda :{'loss': 0, 'count':0, 'avg': 0})
+    loss_tracker = {'loss': [], 'count':[0], 'avg': []}
     
     ## metrics in case 
     metric_acc = evaluate.load("accuracy")
     metric_roc_auc = evaluate.load("roc_auc")
-    metric_precision = evaluate.load("Precision")
-    metric_recall = evaluate.load("Recall")
-    metric_F1 = evaluate.load('F1')
     
     ## to calculate ECE/calibration
-    with open(os.path.join(save_dir, f"{save_dir}.txt"), "w") as file:
+    with open(os.path.join(save_dir, f"ECE_{label}.txt"), "w") as file:
         file.write("Confidence\tPrediction\tLabel\n")    
         for epoch in range(num_epochs): 
             for i, data in enumerate(train_dataloader):
@@ -94,56 +89,47 @@ def do_train(args, model, train_dataloader, scheduler = 'CosineAnnealingLR', sav
                 less_toxic_labels = data['labels_less_toxic'].to(device, dtype=torch.long)
                 targets = data['target'].to(device, dtype=torch.long)
                 
-                more_toxic_outputs = model(more_toxic_ids, more_toxic_mask)
-                less_toxic_outputs = model(less_toxic_ids, less_toxic_mask)
-                
+                more_toxic_single, more_toxic_outputs = model(more_toxic_ids, more_toxic_mask)
+                less_toxic_single, less_toxic_outputs = model(less_toxic_ids, less_toxic_mask)
+                            
                 ## more_toxic
-                softmaxes = F.softmax(more_toxic_outputs.logits, dim=1)
-                confidences, predictions = torch.max(softmaxes, 1)
-                
-                metric_acc.add_batch(predictions=predictions, references=data["labels_more_toxic"])
-                metric_roc_auc.add_batch(predictions=predictions, references=data["labels_more_toxic"])
-                metric_precision.add_batch(predictions=predictions, references=data["labels_more_toxic"])
-                metric_recall.add_batch(predictions=predictions, references=data["labels_more_toxic"])
-                metric_F1.add_batch(predictions=predictions, references=data["labels_more_toxic"])
-                file.write(f'{confidences.to_list()}\t{predictions.to_list()}\t{more_toxic_labels.to_list()}\n')
+                confidences, predictions = torch.max(more_toxic_outputs, axis = -1, keepdim = True)
+                predictions = predictions.to(dtype = torch.float32)
+            
+                metric_acc.add_batch(predictions=predictions, references= more_toxic_labels)
+                metric_roc_auc.add_batch(prediction_scores =predictions.to(dtype = torch.int32), references = more_toxic_labels.to(dtype = torch.int32))
+                file.write(f'{confidences.tolist()}\t{predictions.tolist()}\t{more_toxic_labels.tolist()}\n')
                 
                 ## less_toxic
-                softmaxes = F.softmax(less_toxic_outputs.logits, dim=1)
-                confidences, predictions = torch.max(softmaxes, 1)
-                
-                metric_acc.add_batch(predictions=predictions, references=data["labels_less_toxic"])
-                metric_roc_auc.add_batch(predictions=predictions, references=data["labels_less_toxic"])
-                metric_precision.add_batch(predictions=predictions, references=data["labels_less_toxic"])
-                metric_recall.add_batch(predictions=predictions, references=data["labels_less_toxic"])
-                metric_F1.add_batch(predictions=predictions, references=data["labels_less_toxic"])
-                file.write(f'{confidences.to_list()}\t{predictions.to_list()}\t{less_toxic_labels.to_list()}\n')
+                confidences, predictions = torch.max(less_toxic_outputs, -1, keepdim = True)
+                predictions = predictions.to(dtype = torch.float32)
+
+                metric_acc.add_batch(predictions=predictions, references=less_toxic_labels)
+                metric_roc_auc.add_batch(prediction_scores =predictions, references=less_toxic_labels)
+                file.write(f'{confidences.tolist()}\t{predictions.tolist()}\t{less_toxic_labels.tolist()}\n')
                 
                 ## track loss
-                loss = criterion(more_toxic_outputs, less_toxic_outputs, targets)
+                loss = criterion(more_toxic_single, less_toxic_single, targets.unsqueeze(1))
                 loss_tracker['loss'].append(loss.item())
-                loss_tracker['count'] += 1
-                loss_tracker['avg'].append(sum(loss_tracker['loss']) / loss_tracker['count'])
+                loss_tracker['count'][-1] += 1
+                loss_tracker['avg'].append(sum(loss_tracker['loss']) / loss_tracker['count'][-1])
 
                 ## backpropogation
                 loss.backward()
                 optimizer.step()
-                lr_scheduler.step()
+                scheduler.step()
 
                 optimizer.zero_grad()
                 progress_bar.update(1)
                 
         score_acc = metric_acc.compute()
         score_roc_auc = metric_roc_auc.compute()
-        score_precision = metric_precision.compute()
-        score_recall = metric_recall.compute()
-        score_F1 = metric_F1.compute()
-        metric_name = ['accuracy', 'roc_auc', 'Precision', 'Recall', 'F1']
-        score = dict(zip(metric_name, [score_acc, score_roc_auc, score_precision, score_recall, score_F1]))
+        metric_name = ['accuracy', 'roc_auc']
+        score = dict(zip(metric_name, [score_acc, score_roc_auc]))
         print("Training completed...")
         print("Saving Model....")
         ## currently not compare models by epoch
-        model.save_pretrained(args.model_dir)
+        torch.save(model.state_dict(), f'{save_dir}/trained_{label}.pth')
     file.close()   
     
     # save metrics
@@ -160,11 +146,12 @@ def do_train(args, model, train_dataloader, scheduler = 'CosineAnnealingLR', sav
 
 # Core evaluation function
 def do_eval(eval_dataloader, output_dir, out_file):
-    model = AutoModelForSequenceClassification.from_pretrained(args.model_dir)
+    model = ToxicityModel()
+    model.load_state_dict(torch.load(f'{output_dir}'))
     model.to(device)
     model.eval()
     ## to track eval loss & acc
-    loss_tracker = defaultdict(lambda :{'loss': 0, 'count':0, 'avg': 0})
+    loss_tracker = {'loss': [], 'count':[0], 'avg': []}
     metric_acc = evaluate.load("accuracy")
     
     for batch in tqdm(eval_dataloader):
@@ -174,22 +161,24 @@ def do_eval(eval_dataloader, output_dir, out_file):
         ids_less_toxic = batch['ids_less_toxic'].to(device)
         mask_less_toxic = batch['mask_less_toxic'].to(device)
         token_type_ids_less_toxic = batch['token_type_ids_less_toxic'].to(device)
-        target = batch['target'].to(device)
+        targets = data['target'].to(device, dtype=torch.long)
+
         with torch.no_grad():
-            logits_more_toxic = model(ids_more_toxic, mask_more_toxic)
-            logits_less_toxic = model(ids_less_toxic, mask_less_toxic)
+            more_toxic_single, more_toxic_outputs = model(more_toxic_ids, more_toxic_mask)
+            less_toxic_single, less_toxic_outputs = model(less_toxic_ids, less_toxic_mask)
             
             ## leave accuracy as metric only
-            loss = criterion(logits_more_toxic, logits_less_toxic, target)
+            loss = criterion(more_toxic_single, less_toxic_single, targets.unsqueeze(1))
             loss_tracker['loss'].append(loss.item())
             loss_tracker['count'] += 1
             loss_tracker['avg'].append(sum(loss_tracker['loss']) / loss_tracker['count'])
-            metric_acc.add_batch(predictions= (logits_more_toxic >= logits_less_toxic).long(), references=data["target"])
+            metric_acc.add_batch(predictions= (more_toxic_single >= less_toxic_single).to(dtype = torch.float32), 
+                                 references=targets.unsqueeze(1))
     
-    with open(os.path.join(save_dir, "eval_metrics.pkl"), "wb") as pickle_file:
+    with open(os.path.join(args.save_dir, "eval_metrics.pkl"), "wb") as pickle_file:
         pickle.dump(metric_acc.compute(), pickle_file)
 
-    with open(os.path.join(save_dir, "eval_loss_tracker.pkl"), "wb") as pickle_file:
+    with open(os.path.join(args.save_dir, "eval_loss_tracker.pkl"), "wb") as pickle_file:
         pickle.dump(loss_tracker, pickle_file)
         
     print('Eval completed...')
@@ -230,33 +219,6 @@ def create_augmented_dataloader(args, train_dataset):
     return augmented_train_dataloader
 
 
-# Create a dataloader for the transformed test set
-# def create_transformed_dataloader(args, dataset, debug_transformation):
-#     # Print 5 random transformed examples
-#     if debug_transformation:
-#         small_dataset = dataset["test"].shuffle(seed = RANDOM_SEED).select(range(5))
-#         small_transformed_dataset = small_dataset.map(custom_transform, load_from_cache_file=False)
-#         for k in range(5):
-#             print("Original Example ", str(k))
-#             print(small_dataset[k])
-#             print("\n")
-#             print("Transformed Example ", str(k))
-#             print(small_transformed_dataset[k])
-#             print('=' * 30)
-
-#         exit()
-
-#     transformed_dataset = dataset["test"].map(custom_transform, load_from_cache_file=False)
-#     transformed_tokenized_dataset = transformed_dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
-#     transformed_tokenized_dataset = transformed_tokenized_dataset.remove_columns(["more_toxic_text", "less_toxic_text"])
-#     transformed_tokenized_dataset.set_format("torch")
-
-#     transformed_val_dataset = transformed_tokenized_dataset
-#     eval_dataloader = DataLoader(transformed_val_dataset, batch_size=args.batch_size)
-
-#     return eval_dataloader
-
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -267,7 +229,7 @@ if __name__ == "__main__":
     parser.add_argument("--eval", action="store_true", help="evaluate model on the test set")
     parser.add_argument("--eval_transformed", action="store_true", help="evaluate model on the transformed test set")
     parser.add_argument("--checkpoint", type = str, default = 'bert-base-cased')
-    parser.add_argument("--save_dir", type = str, default = "./out")
+    parser.add_argument("--save_dir", type = str, default = '/scratch/' + os.environ.get("USER", "") + '/out/')
     parser.add_argument("--model_dir", type=str, default="./out")
     parser.add_argument("--debug_train", action="store_true",
                         help="use a subset for training to debug your training loop")
@@ -275,10 +237,12 @@ if __name__ == "__main__":
                         help="print a few transformed examples for debugging")
     parser.add_argument("--debug_augmentation", action="store_true",
                         help="print a few augmented examples for debugging")
-    parser.add_argument("--aug_type", type=str, default="original")
+    parser.add_argument("--aug_type", type=str, default="none")
     parser.add_argument("--learning_rate", type=float, default=5e-5)
     parser.add_argument("--num_epochs", type=int, default=3)
     parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--T_max", type = int, default = 500)
+    parser.add_argument("--label", type = str, default = "original")
 
     args = parser.parse_args()
     
@@ -347,9 +311,10 @@ if __name__ == "__main__":
     # Train model on the original training dataset
     if args.train:
         save_dir = os.path.basename(os.path.normpath(args.save_dir))
-        ## TODO: we also need a model class so as to add dropout & fc layers.
-        model = AutoModelForSequenceClassification.from_pretrained(args.checkpoint, num_labels=2)
+        model = ToxicityModel()
         model.to(device)
+        model.bert.register_forward_hood(getActivation('classifier'))
+        
         do_train(args, model, train_dataloader, save_dir=f"{save_dir}")
         # Change eval dir
         args.model_dir = f"{save_dir}"
@@ -358,8 +323,10 @@ if __name__ == "__main__":
     if args.train_augmented:
         save_dir = os.path.basename(os.path.normpath(args.save_dir))
         train_dataloader = create_augmented_dataloader(args, train_dataset)
-        model = AutoModelForSequenceClassification.from_pretrained(args.checkpoint, num_labels=2)
+        model = ToxicityModel()
         model.to(device)
+        model.bert.register_forward_hood(getActivation('classifier'))
+
         do_train(args, model, train_dataloader, save_dir=f"{save_dir}")
         # Change eval dir
         args.model_dir = f"{save_dir}"

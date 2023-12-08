@@ -9,9 +9,6 @@
 
 ## Models
 - TF-IDF
-    - [+ Ridge Regression](https://www.kaggle.com/code/nkitgupta/jigsaw-ridge-ensemble-tfidf-fasttext-0-868) | no pairs
-    - [+ Naive Bayes](https://www.kaggle.com/code/julian3833/jigsaw-incredibly-simple-naive-bayes-0-768) | no pairs
-    - [+ Logistic Regression](https://www.kaggle.com/code/kishalmandal/most-detailed-eda-tf-idf-and-logistic-reg/notebook) | do not use. use proba $\to$ score. 
 - BERT
 - RoBERTa
 - M-BERT
@@ -20,19 +17,22 @@
 - [x] Preprocessing: see [preprocessing.ipynb](https://github.com/TLI2958/NLP_project/blob/main/preprocessing.ipynb) 
     - seed = 1011
     - downsample with threshold 0.01, rate = 0.1
-    - make pairs: 1e5
-    - text cleaning (optional): see [text_clean](https://github.com/TLI2958/NLP_project/blob/main/text_clean.py
-        - training set should now be downsampled, paired, and cleaned, named `train_paired_cleaned.json`
-        - val set should be cleaned, named `val_cleaned.json`
+    - make pairs (optional): 1e5
+    - text cleaning (optional): see [text_clean](https://github.com/TLI2958/NLP_project/blob/main/text_clean.py)
+        - training set should now be downsampled, paired, and cleaned, named `train_paired_cleaned.csv`
+        - val set should be cleaned, named `val_cleaned.csv`
     - create DataDict object (optional)
+  - [wordcloud](https://github.com/TLI2958/NLP_project/blob/main/words_visual.ipynb)
 
 
 - [ ] Core Train and Eval script: [main.py](https://github.com/TLI2958/NLP_project/blob/main/main.py)
     - [x] modified for this project
     - [ ] debug
+        - [x] do_train
+        - [ ] do_eval
 
 - [ ] Run baseline models
-    - [ ] TF-IDF
+    - [x] [TF-IDF](https://github.com/TLI2958/NLP_project/blob/main/TFIDF.ipynb)
     - [ ] BERT-cased
     - [ ] RoBERTa
     - [ ] M-BERT
@@ -51,3 +51,5 @@
     
 - [ ] Report
     - [Proposal](https://www.overleaf.com/project/6536febce2491147b3a0598f)
+    - slides
+    - final report

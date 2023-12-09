@@ -43,11 +43,8 @@
 
 - [ ] Run augmented models
     - [ ] TF-IDF
-    - [x] BERT-cased
-        - butterfinger + homophone
-        - TBC
-    - [x] RoBERTa
-        - 2+ 
+    - [x] BERT-cased | butterfinger + homophone, 1 more TBC
+    - [x] RoBERTa | 3+ 
     - [ ] M-BERT
     
 - [ ] Report

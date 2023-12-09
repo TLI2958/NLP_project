@@ -30,7 +30,7 @@
     - [x] debug
 
 - [ ] Run baseline models
-    - [x][TF-IDF](https://github.com/TLI2958/NLP_project/blob/main/TFIDF.ipynb)
+    - [x] TF-IDF
     - [x] BERT-cased | 2.5 - 3hrs for 50k pairs
     - [x] RoBERTa | 2.5 - 3hrs for 1e5 instances
     - [ ] M-BERT

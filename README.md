@@ -5,7 +5,7 @@
 <!--     - [JTC](https://www.kaggle.com/competitions/jigsaw-toxic-comment-classification-challenge/data?select=test.csv.zip) | binary, used by [Das & Das](https://arxiv.org/pdf/2206.13284.pdf) to create weighted target score -->
 - Validation Set
     - [JRSTC](https://www.kaggle.com/competitions/jigsaw-toxic-severity-rating/data) | paired validation data
-        - Repetitions of pairs. Groupby and take the first pair?
+        - Repetitions of pairs. Groupby and take the first pair.
 
 ## Models
 - TF-IDF
@@ -17,12 +17,12 @@
 - [x] Preprocessing: see [preprocessing.ipynb](https://github.com/TLI2958/NLP_project/blob/main/preprocessing.ipynb) 
     - seed = 1011
     - downsample with threshold 0.01, rate = 0.1
-    - make pairs (optional): 1e5
+    - make pairs (optional): 50k pairs
     - text cleaning (optional): see [text_clean](https://github.com/TLI2958/NLP_project/blob/main/text_clean.py)
         - training set should now be downsampled, paired, and cleaned, named `train_paired_cleaned.csv`
         - val set should be cleaned, named `val_cleaned.csv`
     - dummy labels (optional)
-  - [wordcloud](https://github.com/TLI2958/NLP_project/blob/main/words_visual.ipynb)
+    - [wordcloud](https://github.com/TLI2958/NLP_project/blob/main/words_visual.ipynb)
 
 
 - [x] Core Train and Eval script: [main.py](https://github.com/TLI2958/NLP_project/blob/main/main.py)
@@ -31,7 +31,7 @@
 
 - [ ] Run baseline models
     - [x] [TF-IDF](https://github.com/TLI2958/NLP_project/blob/main/TFIDF.ipynb)
-    - [ ] BERT-cased | running
+    - [x] BERT-cased | ~2.5h for 50k pairs
     - [x] RoBERTa | 2.5 - 3hrs for 1e5 instances
     - [ ] M-BERT
 

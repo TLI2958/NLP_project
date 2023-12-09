@@ -148,7 +148,7 @@ def do_train(args, model, train_dataloader):
 
                     optimizer.zero_grad()
                     progress_bar.update(1)
-                    if i % 2000:
+                    if i % 1000 == 0:
                         save_checkpoint(model, optimizer, epoch, i, args)
 
         score_acc = metric_acc.compute()
@@ -230,7 +230,7 @@ def create_augmented_dataloader(args, train_dataset):
 
         exit()
 
-    chosen_dataset =  small_data_set(train_dataset, split ='train', size = 5000)
+    chosen_dataset =  small_data_set(train_dataset, split ='train', size = 10000)
     
     augmented_dataset = chosen_dataset.map(custom_transform, batched=True, load_from_cache_file=False)
     augmented_dataset = torch.utils.data.ConcatDataset([dataset["train"], augmented_dataset])

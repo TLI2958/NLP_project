@@ -99,11 +99,14 @@ def do_train(args, model, train_dataloader):
     ## to calculate ECE/calibration
     with open(os.path.join(args.save_dir, f"ECE_{args.label}.txt"), "w") as file:
         file.write("Confidence\tPrediction\tLabel\n")    
+        file.flush()
         for epoch in range(start_epoch, num_epochs): 
-            if epoch > start_epoch:
+            if epoch < start_epoch:
+                continue
+            elif epoch > start_epoch:
                 start_iteration = -1
             for i, data in enumerate(train_dataloader):
-                if i <= start_iteration:
+                if i < start_iteration:
                     continue
                 else:
                     ## use MarginRankingLoss
@@ -120,21 +123,25 @@ def do_train(args, model, train_dataloader):
                     less_toxic_single, less_toxic_outputs = model(less_toxic_ids, less_toxic_mask)
 
                     ## more_toxic
-                    confidences, predictions = torch.max(more_toxic_outputs, axis = -1, keepdim = True)
+                    softmaxes = F.softmax(more_toxic_outputs, 1)
+                    confidences, predictions = torch.max(softmaxes, dim = 1, keepdim = True)
+
                     predictions = predictions.to(dtype = torch.float32)
 
                     metric_acc.add_batch(predictions=predictions, references= more_toxic_labels)
                     metric_roc_auc.add_batch(prediction_scores =predictions.to(dtype = torch.int32), references = more_toxic_labels.to(dtype = torch.int32))
                     file.write(f'{confidences.tolist()}\t{predictions.tolist()}\t{more_toxic_labels.tolist()}\n')
-
+                    file.flush()
                     ## less_toxic
-                    confidences, predictions = torch.max(less_toxic_outputs, -1, keepdim = True)
+                    softmaxes = F.softmax(less_toxic_outputs, 1)
+                    confidences, predictions = torch.max(softmaxes, dim = 1, keepdim = True)
+
                     predictions = predictions.to(dtype = torch.float32)
 
                     metric_acc.add_batch(predictions=predictions, references=less_toxic_labels)
                     metric_roc_auc.add_batch(prediction_scores =predictions, references=less_toxic_labels)
                     file.write(f'{confidences.tolist()}\t{predictions.tolist()}\t{less_toxic_labels.tolist()}\n')
-
+                    file.flush()
                     ## track loss
                     loss = criterion(more_toxic_single, less_toxic_single, targets.unsqueeze(1))
                     loss_tracker['loss'].append(loss.item())
@@ -217,12 +224,12 @@ def do_eval(eval_dataloader, output_dir, out_file):
 # Created a dataloader for the augmented training dataset
 def create_augmented_dataloader(args, train_dataset):
     # Print 5 random transformed examples
-    if debug_augmentation:
-        small_train_dataset = small_data_set(train_dataset, 'train', size = 10)
-        small_augmented_dataset = small_dataset.map(custom_transform, load_from_cache_file=False)
+    if args.debug_augmentation:
+        small_train_dataset = small_data_set(train_dataset, 'train', size = 5)
+        small_augmented_dataset = small_train_dataset.map(custom_transform, load_from_cache_file=False)
         for k in range(5):
             print("Original Example ", str(k))
-            print(small_dataset[k])
+            print(small_train_dataset[k])
             print("\n")
             print("Augmented Example ", str(k))
             print(small_augmented_dataset[k])
@@ -233,8 +240,7 @@ def create_augmented_dataloader(args, train_dataset):
     chosen_dataset =  small_data_set(train_dataset, split ='train', size = 10000)
     
     augmented_dataset = chosen_dataset.map(custom_transform, batched=True, load_from_cache_file=False)
-    augmented_dataset = torch.utils.data.ConcatDataset([dataset["train"], augmented_dataset])
-
+    augmented_dataset = datasets.concatenate_datasets([train_dataset['train'], augmented_dataset])
     # Tokenize, remove, rename
     augmented_tokenized_dataset = BERTDataset(
         more_toxic=augmented_dataset["more_toxic_text"],
@@ -243,7 +249,6 @@ def create_augmented_dataloader(args, train_dataset):
         labels_less_toxic=augmented_dataset["labels_less_toxic"],
     )
 
-    augmented_tokenized_dataset.set_format("torch")
     augmented_train_dataloader = DataLoader(augmented_tokenized_dataset,
                                             shuffle=True, num_workers = os.cpu_count(), 
                                             batch_size=args.batch_size)
@@ -269,7 +274,6 @@ if __name__ == "__main__":
                         help="print a few transformed examples for debugging")
     parser.add_argument("--debug_augmentation", action="store_true",
                         help="print a few augmented examples for debugging")
-    parser.add_argument("--aug_type", type=str, default="none")
     parser.add_argument("--learning_rate", type=float, default=5e-5)
     parser.add_argument("--num_epochs", type=int, default=3)
     parser.add_argument("--batch_size", type=int, default=8)
@@ -362,7 +366,7 @@ if __name__ == "__main__":
     # Evaluate the trained model on the original test dataset
     if args.eval:
         out_file = args.model_dir
-        out_file = out_file + f"out_{args.aug_type}.txt"
+        out_file = out_file + f"out_{args.label}.txt"
         do_eval(eval_dataloader, args.model_dir, out_file)
         # print(f"Marginal Ranking Loss: {mrl:.4f}")
         # for metric, value in score.items():

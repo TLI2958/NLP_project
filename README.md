@@ -30,21 +30,21 @@
     - [x] debug
 
 - [ ] Run baseline models
-    - [x] [TF-IDF](https://github.com/TLI2958/NLP_project/blob/main/TFIDF.ipynb)
-    - [x] BERT-cased | ~2.5h for 50k pairs
+    - [x][TF-IDF](https://github.com/TLI2958/NLP_project/blob/main/TFIDF.ipynb)
+    - [x] BERT-cased | 2.5 - 3hrs for 50k pairs
     - [x] RoBERTa | 2.5 - 3hrs for 1e5 instances
     - [ ] M-BERT
 
 - [ ] [Augmentations](https://github.com/GEM-benchmark/NL-Augmenter/tree/main/nlaugmenter/transformations)
-    - random deletion/order switch?
     - [butterfinger + homophones](https://github.com/TLI2958/NLP_project/blob/main/utils.py)
+    - TBD
     <!-- - [homophones](https://github.com/GEM-benchmark/NL-Augmenter/blob/main/nlaugmenter/transformations/close_homophones_swap/transformation.py) | but slow. dictionary not useful. -->
     <!-- - [backtranslation](https://github.com/GEM-benchmark/NL-Augmenter/tree/main/nlaugmenter/transformations/back_translation) -->
 
 - [ ] Run augmented models
     - [ ] TF-IDF
-    - [ ] BERT-cased
-    - [x] RoBERTa
+    - [x] BERT-cased | butterfinger + homophone, 1 more TBC
+    - [x] RoBERTa | 3+ 
     - [ ] M-BERT
     
 - [ ] Report

@@ -21,21 +21,13 @@ import pandas as pd
 random.seed(1011)
 path = os.getcwd()
 
-# import spacy
-# from SoundsLike.SoundsLike import Search
-
-# spacy_nlp = spacy.load("en_core_web_sm")
-
 ## homophones dictionary
 homophones = pd.read_json(f'{path}/homophones.json', orient = 'split')
 homophones_map = dict(zip(homophones.input, homophones.output))
 
-# def example_transform(example):
-#     example["text"] = example["text"].lower()
-#     return example
 
 # https://github.com/GEM-benchmark/NL-Augmenter/blob/main/nlaugmenter/transformations/butter_fingers_perturbation/transformation.py
-def butter_finger(text, prob=0.1):
+def butter_finger(text, prob=0.2):
     key_approx = {}
 
     key_approx["q"] = "qwasedzx"
@@ -85,65 +77,29 @@ def butter_finger(text, prob=0.1):
     return butter_text
 
 
-def custom_transform(example, homophone_prob = 0.5, butter_finger_prob = 0.1):
-    more_toxic_tokens = word_tokenize(example['more_toxic_text'])
-    less_toxic_tokens = word_tokenize(example['less_toxic_text'])
-    
-    perturbed = ''
-    for token in more_toxic_tokens:
-        if homophones_map.get(token, 0):
-            if random.uniform(0,1) <= homophone_prob:
-                token = random.choice(homophones_map[token])
-        elif random.uniform(0,1) <= butter_finger_prob:
-            token = butter_finger(token, prob = butter_finger_prob)
-        perturbed += token
-    example['more_toxic_text'] = TreebankWordDetokenizer(perturbed)
-    
-    perturbed = ''
-    for token in less_toxic_tokens:
-        if homophones_map.get(token, 0):
-            if random.uniform(0,1) <= homophone_prob:
-                token = random.choice(homophones_map[token])
-        elif random.uniform(0,1) <= butter_finger_prob:
-            token = butter_finger(token, prob = butter_finger_prob)
-        perturbed += token
-    example['less_toxic_text'] = TreebankWordDetokenizer(perturbed)
-    return example
-                    
+def custom_transform(example, homophone_prob = 0.5, butter_finger_prob = 0.2):
+    if example['more_toxic_text'] is not None and isinstance(example['more_toxic_text'], str):
+        if example['less_toxic_text'] is not None and isinstance(example['less_toxic_text'], str):
+            more_toxic_text = word_tokenize(example['more_toxic_text'])
+            less_toxic_text = word_tokenize(example['less_toxic_text'])
+            perturbed = []
+            for token in more_toxic_text:
+                if homophones_map.get(token, 0):
+                    if random.uniform(0,1) <= homophone_prob:
+                        token = random.choice(homophones_map[token])
+                elif random.uniform(0,1) <= butter_finger_prob:
+                    token = butter_finger(token, prob = butter_finger_prob)
+                perturbed.append(token)
+            example['more_toxic_text'] = TreebankWordDetokenizer().detokenize(perturbed)
 
-    # (i) closeHomophones
-    # Close Homophones Swap
-    # ref: https://github.com/GEM-benchmark/NL-Augmenter/blob/main/nlaugmenter/transformations/close_homophones_swap/transformation.py
-    # doc = nlp(text)
-
-    # spaces = [True if token.whitespace_ else False for token in doc]
-    # for _ in range(max_outputs):
-    #     perturbed_text = []
-    #     for index, token in enumerate(doc):
-    #         if random.uniform(0, 1) < corrupt_prob:
-    #             try:
-    #                 replacement = random.choice(
-    #                     Search.closeHomophones(token.text)
-    #                 )
-    #                 if (
-    #                     replacement.lower() != token.text.lower() # replacable?
-    #                     and token.text.lower() != "a"
-    #                 ):
-    #                     perturbed_text.append(replacement)
-    #                 else:
-    #                     perturbed_text.append(token.text)
-    #             except Exception:
-    #                 perturbed_text.append(token.text)
-    #         else:
-    #             perturbed_text.append(token.text)
-
-    #     textbf = ""
-    #     for index, token in enumerate(perturbed_text):
-    #         textbf += token
-    #         if spaces[index]:
-    #             textbf += ' '
-
-    #     example['text'] = textbf
-
-    # (ii) 
+            perturbed = []
+            for token in less_toxic_text:
+                if homophones_map.get(token, 0):
+                    if random.uniform(0,1) <= homophone_prob:
+                        token = random.choice(homophones_map[token])
+                elif random.uniform(0,1) <= butter_finger_prob:
+                    token = butter_finger(token, prob = butter_finger_prob)
+                perturbed.append(token)
+            example['less_toxic_text'] = TreebankWordDetokenizer().detokenize(perturbed)
+        
     return example

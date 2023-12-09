@@ -121,7 +121,8 @@ def do_train(args, model, train_dataloader):
                     less_toxic_single, less_toxic_outputs = model(less_toxic_ids, less_toxic_mask)
 
                     ## more_toxic
-                    confidences, predictions = torch.max(more_toxic_outputs, axis = -1, keepdim = True)
+                    softmaxes = F.softmax(more_toxic_outputs, dim = 1)
+                    confidences, predictions = torch.max(softmaxes, 1, keepdim = True)
                     predictions = predictions.to(dtype = torch.float32)
 
                     metric_acc.add_batch(predictions=predictions, references= more_toxic_labels)
@@ -129,7 +130,8 @@ def do_train(args, model, train_dataloader):
                     file.write(f'{confidences.tolist()}\t{predictions.tolist()}\t{more_toxic_labels.tolist()}\n')
                     file.flush()
                     ## less_toxic
-                    confidences, predictions = torch.max(less_toxic_outputs, -1, keepdim = True)
+                    softmaxes = F.softmax(less_toxic_outputs, dim = 1)
+                    confidences, predictions = torch.max(softmaxes, 1, keepdim = True)
                     predictions = predictions.to(dtype = torch.float32)
 
                     metric_acc.add_batch(predictions=predictions, references=less_toxic_labels)

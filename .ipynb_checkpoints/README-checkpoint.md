@@ -14,20 +14,18 @@
 - M-BERT
     
 ## Progress
-- [x] Preprocessing: see [preprocessing.ipynb](https://github.com/TLI2958/NLP_project/blob/main/preprocessing.ipynb) 
+- [x] Preprocessing: see [preprocessing.ipynb](https://github.com/TLI2958/NLP_project/blob/main/BERT/preprocessing.ipynb) 
     - seed = 1011
     - downsample with threshold 0.01, rate = 0.1
     - make pairs (optional): 50k pairs
-    - text cleaning (optional): see [text_clean](https://github.com/TLI2958/NLP_project/blob/main/text_clean.py)
+    - text cleaning (optional): see [text_clean](https://github.com/TLI2958/NLP_project/blob/main/BERT/text_clean.py)
         - training set should now be downsampled, paired, and cleaned, named `train_paired_cleaned.csv`
         - val set should be cleaned, named `val_cleaned.csv`
     - dummy labels (optional)
     - [wordcloud](https://github.com/TLI2958/NLP_project/blob/main/words_visual.ipynb)
 
 
-- [x] Core Train and Eval script: [main.py](https://github.com/TLI2958/NLP_project/blob/main/main.py)
-    - [x] modified for this project
-    - [x] debug
+- [x] Modify and Debug [main.py](https://github.com/TLI2958/NLP_project/blob/main/BERT/main.py) etc.
 
 - [ ] Run baseline models
     - [x] TF-IDF
@@ -35,19 +33,20 @@
     - [x] RoBERTa | 2.5 - 3hrs for 1e5 instances
     - [ ] M-BERT
 
-- [ ] [Augmentations](https://github.com/GEM-benchmark/NL-Augmenter/tree/main/nlaugmenter/transformations)
-    - [butterfinger + homophones](https://github.com/TLI2958/NLP_project/blob/main/utils.py)
-    - TBD
+- [x] Augmentations
+    - butterfinger (+ homophones)
+    - synonyms (optional)
+    - back translation (optional)
     <!-- - [homophones](https://github.com/GEM-benchmark/NL-Augmenter/blob/main/nlaugmenter/transformations/close_homophones_swap/transformation.py) | but slow. dictionary not useful. -->
     <!-- - [backtranslation](https://github.com/GEM-benchmark/NL-Augmenter/tree/main/nlaugmenter/transformations/back_translation) -->
 
 - [ ] Run augmented models
     - [ ] TF-IDF
     - [x] BERT-cased | butterfinger + homophone, en_ru backtranslation
-    - [x] RoBERTa | butterfinger, synonym
+    - [x] RoBERTa | butterfinger, synonyms
     - [ ] M-BERT
     
 - [ ] Report
     - [Proposal](https://www.overleaf.com/project/6536febce2491147b3a0598f)
-    - slides
-    - final report
+    - [slides](https://www.overleaf.com/project/654057634a4ed773192dd085)
+    - [final report](https://www.overleaf.com/project/657552104de051dec2ae7d80)

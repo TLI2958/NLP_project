@@ -14,7 +14,7 @@
 - M-BERT
     
 ## Progress
-- [x] Preprocessing: see [preprocessing.ipynb](https://github.com/TLI2958/NLP_project/blob/main/preprocessing.ipynb) 
+- [x] Preprocessing: see [preprocessing.ipynb](https://github.com/TLI2958/NLP_project/blob/main/BERT/preprocessing.ipynb) 
     - seed = 1011
     - downsample with threshold 0.01, rate = 0.1
     - make pairs (optional): 50k pairs

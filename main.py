@@ -121,7 +121,6 @@ def do_train(args, model, train_dataloader):
 
                     more_toxic_single, more_toxic_outputs = model(more_toxic_ids, more_toxic_mask)
                     less_toxic_single, less_toxic_outputs = model(less_toxic_ids, less_toxic_mask)
-
                     ## more_toxic
                     softmaxes = F.softmax(more_toxic_outputs, dim = 1)
                     confidences, predictions = torch.max(softmaxes, 1, keepdim = True)

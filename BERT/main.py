@@ -20,6 +20,8 @@ from utils import *
 from BertDataSet import *
 from ToxicityModel import *
 import os
+import torch.nn as nn
+
 
 
 ## ref: https://www.kaggle.com/code/manabendrarout/pytorch-roberta-ranking-baseline-jrstc-train
@@ -211,8 +213,8 @@ def do_eval(eval_dataloader, output_dir):
     with open(os.path.join(args.save_dir, "eval_metrics.pkl"), "wb") as pickle_file:
         pickle.dump(score, pickle_file)
 
-#     with open(os.path.join(args.save_dir, "eval_loss_tracker.pkl"), "wb") as pickle_file:
-#         pickle.dump(loss_tracker, pickle_file)
+    with open(os.path.join(args.save_dir, "eval_loss_tracker.pkl"), "wb") as pickle_file:
+        pickle.dump(loss_tracker, pickle_file)
         
     print('Eval completed...')
 #     print(f'avg eval loss = {loss_tracker["avg"][-1]}\navg accuracy = {metric_acc.compute()}')

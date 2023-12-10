@@ -121,7 +121,6 @@ def do_train(args, model, train_dataloader):
 
                     more_toxic_single, more_toxic_outputs = model(more_toxic_ids, more_toxic_mask)
                     less_toxic_single, less_toxic_outputs = model(less_toxic_ids, less_toxic_mask)
-
                     ## more_toxic
                     softmaxes = F.softmax(more_toxic_outputs, dim = 1)
                     confidences, predictions = torch.max(softmaxes, 1, keepdim = True)
@@ -179,9 +178,9 @@ def do_train(args, model, train_dataloader):
 
 
 # Core evaluation function
-def do_eval(eval_dataloader, output_dir, out_file):
+def do_eval(eval_dataloader, output_dir):
     model = ToxicityModel()
-    model.load_state_dict(torch.load(f'{output_dir}'))
+    model.load_state_dict(torch.load(f'{output_dir}/trained_{args.label}.pth'))
     model.to(device)
     model.eval()
     ## to track eval loss & acc
@@ -195,28 +194,28 @@ def do_eval(eval_dataloader, output_dir, out_file):
         ids_less_toxic = batch['ids_less_toxic'].to(device)
         mask_less_toxic = batch['mask_less_toxic'].to(device)
         token_type_ids_less_toxic = batch['token_type_ids_less_toxic'].to(device)
-        targets = data['target'].to(device, dtype=torch.long)
+        targets = batch['target'].to(device, dtype=torch.long)
 
         with torch.no_grad():
-            more_toxic_single, more_toxic_outputs = model(more_toxic_ids, more_toxic_mask)
-            less_toxic_single, less_toxic_outputs = model(less_toxic_ids, less_toxic_mask)
+            more_toxic_single, more_toxic_outputs = model(ids_more_toxic, mask_more_toxic)
+            less_toxic_single, less_toxic_outputs = model(ids_less_toxic, mask_less_toxic)
             
             ## leave accuracy as metric only
             loss = criterion(more_toxic_single, less_toxic_single, targets.unsqueeze(1))
             loss_tracker['loss'].append(loss.item())
-            loss_tracker['count'] += 1
-            loss_tracker['avg'].append(sum(loss_tracker['loss']) / loss_tracker['count'])
+            loss_tracker['count'][-1] += 1
+            loss_tracker['avg'].append(sum(loss_tracker['loss']) / loss_tracker['count'][-1])
             metric_acc.add_batch(predictions= (more_toxic_single >= less_toxic_single).to(dtype = torch.float32), 
                                  references=targets.unsqueeze(1))
-    
+    score = metric_acc.compute()
     with open(os.path.join(args.save_dir, "eval_metrics.pkl"), "wb") as pickle_file:
-        pickle.dump(metric_acc.compute(), pickle_file)
+        pickle.dump(score, pickle_file)
 
-    with open(os.path.join(args.save_dir, "eval_loss_tracker.pkl"), "wb") as pickle_file:
-        pickle.dump(loss_tracker, pickle_file)
+#     with open(os.path.join(args.save_dir, "eval_loss_tracker.pkl"), "wb") as pickle_file:
+#         pickle.dump(loss_tracker, pickle_file)
         
     print('Eval completed...')
-    print(f'avg eval loss = {loss_tracker["avg"][-1]}\navg accuracy = {metric_acc.compute()}')
+#     print(f'avg eval loss = {loss_tracker["avg"][-1]}\navg accuracy = {metric_acc.compute()}')
     return 
 
 # Created a dataloader for the augmented training dataset
@@ -363,19 +362,8 @@ if __name__ == "__main__":
 
     # Evaluate the trained model on the original test dataset
     if args.eval:
-        out_file = args.model_dir
-        out_file = out_file + f"out_{args.label}.txt"
-        do_eval(eval_dataloader, args.model_dir, out_file)
+        do_eval(eval_dataloader, args.model_dir)
         # print(f"Marginal Ranking Loss: {mrl:.4f}")
         # for metric, value in score.items():
         #     print(f"{metric}: {value}")  
 
-    # Evaluate the trained model on the transformed test dataset
-    if args.eval_transformed:
-        out_file = args.model_dir
-        out_file = out_file + f"{args.transform_type}.txt"
-        eval_transformed_dataloader = create_transformed_dataloader(args, dataset, args.debug_transformation)
-        do_eval(eval_transformed_dataloader, args.model_dir, out_file)
-        # print(f"Marginal Ranking Loss: {mrl:.4f}")
-        # for metric, value in score.items():
-        #     print(f"{metric}: {value}")  

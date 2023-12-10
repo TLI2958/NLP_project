@@ -18,7 +18,7 @@
     - seed = 1011
     - downsample with threshold 0.01, rate = 0.1
     - make pairs (optional): 50k pairs
-    - text cleaning (optional): see [text_clean](https://github.com/TLI2958/NLP_project/blob/main/text_clean.py)
+    - text cleaning (optional): see [text_clean](https://github.com/TLI2958/NLP_project/blob/main/BERT/text_clean.py)
         - training set should now be downsampled, paired, and cleaned, named `train_paired_cleaned.csv`
         - val set should be cleaned, named `val_cleaned.csv`
     - dummy labels (optional)

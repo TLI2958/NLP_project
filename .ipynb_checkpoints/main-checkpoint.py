@@ -101,7 +101,9 @@ def do_train(args, model, train_dataloader):
         file.write("Confidence\tPrediction\tLabel\n")    
         file.flush()
         for epoch in range(start_epoch, num_epochs): 
-            if epoch > start_epoch:
+            if epoch < start_epoch:
+                continue
+            elif epoch > start_epoch:
                 start_iteration = -1
             for i, data in enumerate(train_dataloader):
                 if i < start_iteration:
@@ -233,7 +235,7 @@ def create_augmented_dataloader(args, train_dataset):
 
         exit()
 
-    chosen_dataset =  small_data_set(train_dataset, split ='train', size = 10000)
+    chosen_dataset =  small_data_set(train_dataset, split ='train', size = 5000)
     
     augmented_dataset = chosen_dataset.map(custom_transform, batched=True, load_from_cache_file=False)
     augmented_dataset = datasets.concatenate_datasets([train_dataset['train'], augmented_dataset])

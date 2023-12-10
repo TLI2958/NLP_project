@@ -1,0 +1,34 @@
+Original Example  0
+{'Unnamed: 0': 14317, 'more_toxic_text': 'Now now Don t be a sore loser', 'less_toxic_text': 'Give up It s not working It s just a joke now', 'toxicity_more_toxic': 0.463768115942029, 'toxicity_less_toxic': 0.16666666666666666, 'labels_more_toxic': 0, 'labels_less_toxic': 0}
+
+
+Augmented Example  0
+{'Unnamed: 0': 14317, 'more_toxic_text': "Don't be a spiteful loser now", 'less_toxic_text': "Give up It's not working It's just a joke now", 'toxicity_more_toxic': 0.463768115942029, 'toxicity_less_toxic': 0.16666666666666666, 'labels_more_toxic': 0, 'labels_less_toxic': 0}
+==============================
+Original Example  1
+{'Unnamed: 0': 14206, 'more_toxic_text': 'There s always self help books at the library for free', 'less_toxic_text': 'That wasn t what he was like when he was at UIUC so it would be a huge change in the man s attitudes As I said the only time I ve ever walked out of Mass was during one of his sermons They were regularly overtly political and full of inappropriate and over the top rhetoric', 'toxicity_more_toxic': 0.16666666666666666, 'toxicity_less_toxic': 0.0, 'labels_more_toxic': 0, 'labels_less_toxic': 0}
+
+
+Augmented Example  1
+{'Unnamed: 0': 14206, 'more_toxic_text': 'The library always has self-help books for free', 'less_toxic_text': 'As I said, the only time I ever left Mass was during one of his sermons. They were regularly overtly political and full of inappropriate and excessive rhetoric.', 'toxicity_more_toxic': 0.16666666666666666, 'toxicity_less_toxic': 0.0, 'labels_more_toxic': 0, 'labels_less_toxic': 0}
+==============================
+Original Example  2
+{'Unnamed: 0': 3997, 'more_toxic_text': 'Haha Just give up No one is believing your lies lol pathetic', 'less_toxic_text': 'A Russian lawyer Russian lobbyist and Russian real estate developer walk into Trump Tower Sounds like the start of a bad joke Oh I guess it is', 'toxicity_more_toxic': 0.7321428571428571, 'toxicity_less_toxic': 0.2, 'labels_more_toxic': 1, 'labels_less_toxic': 0}
+
+
+Augmented Example  2
+{'Unnamed: 0': 3997, 'more_toxic_text': 'Haha, just give up Nobody believes your lies lol pathetic', 'less_toxic_text': 'Russian lawyer Russian lobbyist and Russian real estate developer walked into Trump Tower Sos as the start of a bad joke', 'toxicity_more_toxic': 0.7321428571428571, 'toxicity_less_toxic': 0.2, 'labels_more_toxic': 1, 'labels_less_toxic': 0}
+==============================
+Original Example  3
+{'Unnamed: 0': 28166, 'more_toxic_text': 'Ya mon Iree BumbaClaude', 'less_toxic_text': 'Well watch the next election A lot of Liberal voters in business will chose an alternate', 'toxicity_more_toxic': 0.0, 'toxicity_less_toxic': 0.0, 'labels_more_toxic': 0, 'labels_less_toxic': 0}
+
+
+Augmented Example  3
+{'Unnamed: 0': 28166, 'more_toxic_text': 'Ya mon Iree BumbaClaude', 'less_toxic_text': 'Well Look at the Next Election Many Liberal Business Voters Will Choose an Alternative', 'toxicity_more_toxic': 0.0, 'toxicity_less_toxic': 0.0, 'labels_more_toxic': 0, 'labels_less_toxic': 0}
+==============================
+Original Example  4
+{'Unnamed: 0': 23204, 'more_toxic_text': 'wow is a golden opportunity for republicans and for the speaker to cement his office if speaker Ryan had any balls all he would have to do is put a picture of himself aside the old hag and say which face do you want to stare at during the STOU', 'less_toxic_text': 'Apparently it is not considered a religious freedom to wish to have a president who is not a habitual liar and who insults the dignity of women the disabled and other minorities As for the contraception issue most married presumably Catholics use artificial contraception so whose religious liberties are at stake here Not all Christian ministers are taken in by Trump s rhetoric The issue is whether the religious liberties of clergy are to be given the right to dominate the public square to the exclusion of others who may have a better claim to moral integrity It is helpful to have access to secular media such as NPR where one will find another take on what Protestant clergy have had to say about Trump s view of religious liberty and the relationship between Church and State It was the New York Times that informed me that Steve Bannon is a right wing Catholic not the NCR Were it not for Pope Francis I would say Church is going to hell in a hand basket', 'toxicity_more_toxic': 0.5, 'toxicity_less_toxic': 0.4, 'labels_more_toxic': 0, 'labels_less_toxic': 0}
+
+
+Augmented Example  4
+{'Unnamed: 0': 23204, 'more_toxic_text': 'Grief is a great opportunity for jars and for the Speaker to strengthen his cabinet, if Speaker Ryan has any balls, all he needs to do is put a picture of himself away from the old hut and say what face you want to look at during STOW', 'less_toxic_text': 'Not all Christian clerics agree with Trump\'s rhetoric The question is whether clans "religious freedoms should be allowed to dominate the plaza, except for those who can claim better moral integrity It is helpful to have access to media outlets like NPR, where you can find a different perspective on Trump\'s clans" views on religious freedom and the relationship between Church and State It is the New York Times that told me that Steve Bannon is a right-wing Catholic, not a Catholic. If it were not for Pope Francis, I would say that the Church goes

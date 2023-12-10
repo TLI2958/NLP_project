@@ -1,15 +1,10 @@
 import os
-import evaluate
 import random
-import argparse
 from nltk.corpus import wordnet
 from nltk import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 import pandas as pd
-from transformers import FSMTForConditionalGeneration, FSMTTokenizer
 
-
-random.seed(1011)
 path = os.getcwd()
 
 ## homophones dictionary
@@ -94,37 +89,3 @@ def butter_homo_transform(example, homophone_prob = 0.5, butter_finger_prob = 0.
             example['less_toxic_text'] = TreebankWordDetokenizer().detokenize(perturbed)
 
     return example
-
-## https://huggingface.co/facebook/wmt19-ru-en
-## de_en does not work from my end
-## inspired by back_translation perturbs
-
-def en_ru_back(text): 
-    if text is not None and isinstance(text, str):
-        mname = "facebook/wmt19-en-ru"
-        tokenizer = FSMTTokenizer.from_pretrained(mname)
-        model = FSMTForConditionalGeneration.from_pretrained(mname)
-
-        input = text
-        input_ids = tokenizer.encode(input, return_tensors="pt")
-        outputs = model.generate(input_ids)
-        decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-        mname = "facebook/wmt19-ru-en"
-        tokenizer = FSMTTokenizer.from_pretrained(mname)
-        model = FSMTForConditionalGeneration.from_pretrained(mname)
-
-        input = decoded
-        input_ids = tokenizer.encode(input, return_tensors="pt")
-        outputs = model.generate(input_ids)
-        decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        return decoded
-    return text
-
-    
-def custom_transform(example):
-    example['more_toxic_text'], example['less_toxic_text'] = (en_ru_back(example['more_toxic_text']), 
-                                                              en_ru_back(example['less_toxic_text']))
-    return example
-
-

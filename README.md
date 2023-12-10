@@ -25,9 +25,7 @@
     - [wordcloud](https://github.com/TLI2958/NLP_project/blob/main/words_visual.ipynb)
 
 
-- [x] Core Train and Eval script: [main.py](https://github.com/TLI2958/NLP_project/blob/main/main.py)
-    - [x] modified for this project
-    - [x] debug
+- [x] Modify and Debug [main.py](https://github.com/TLI2958/NLP_project/blob/main/BERT/main.py) etc.
 
 - [ ] Run baseline models
     - [x] TF-IDF
@@ -35,7 +33,7 @@
     - [x] RoBERTa | 2.5 - 3hrs for 1e5 instances
     - [ ] M-BERT
 
-- Augmentations
+- [x] Augmentations
     - butterfinger (+ homophones)
     - synonyms (optional)
     - back translation (optional)

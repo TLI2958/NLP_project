@@ -27,11 +27,11 @@
 
 - [x] Modify and Debug [main.py](https://github.com/TLI2958/NLP_project/blob/main/BERT/main.py) etc.
 
-- [ ] Run baseline models
+- [x] Run baseline models
     - [x] TF-IDF
     - [x] BERT-cased | 2.5 - 3hrs for 50k pairs
     - [x] RoBERTa | 2.5 - 3hrs for 1e5 instances
-    - [ ] M-BERT
+    - [x] M-BERT
 
 - [x] Augmentations
     - butterfinger (+ homophones)
@@ -40,13 +40,13 @@
     <!-- - [homophones](https://github.com/GEM-benchmark/NL-Augmenter/blob/main/nlaugmenter/transformations/close_homophones_swap/transformation.py) | but slow. dictionary not useful. -->
     <!-- - [backtranslation](https://github.com/GEM-benchmark/NL-Augmenter/tree/main/nlaugmenter/transformations/back_translation) -->
 
-- [ ] Run augmented models
-    - [ ] TF-IDF
+- [x] Run augmented models
+    - [x] TF-IDF
     - [x] BERT-cased | butterfinger + homophone, en_ru backtranslation
     - [x] RoBERTa | butterfinger, synonyms
-    - [ ] M-BERT
+    - [x] M-BERT
     
-- [ ] Report
+- [x] Report
     - [Proposal](https://www.overleaf.com/project/6536febce2491147b3a0598f)
     - [slides](https://www.overleaf.com/project/654057634a4ed773192dd085)
     - [final report](https://www.overleaf.com/project/657552104de051dec2ae7d80)

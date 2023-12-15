@@ -149,12 +149,12 @@ def map_results(df, cols):
     return df
     
 
-def plot_loss(loss_trackers, total = 3):
+def plot_loss(loss_trackers, total = 3, plots = 2):
     nyu_colors = ['#7b5aa6', '#330662', '#6d6d6d']
     line_style = ['-', '--']
     data_set = ['Training', 'Validation']
     aug_type = ['original', 'butter_homo', 'back_translation']
-    fig, ax = plt.subplots(1,2, figsize = (22,8))
+    fig, ax = plt.subplots(1,plots, figsize = (22,8))
     for i, loss_tracker in enumerate(loss_trackers):
         sns.lineplot(x = range(1, len(loss_tracker['avg']) + 1), y = loss_tracker['avg'], 
                      label=f'{data_set[i//total]} Loss: {aug_type[i%total]}', color = nyu_colors[i%total], 
@@ -167,7 +167,7 @@ def plot_loss(loss_trackers, total = 3):
 
         ax[i//total].legend(fontsize = 12)
     fig.suptitle('Average Loss across Steps', fontsize=20)
-    y_label = fig.text(0.08, 0.5, 'Marginal Ranking Loss', va='center', rotation='vertical', fontsize=15)
+    y_label = fig.text(0.08, 0.5, 'Margin Ranking Loss', va='center', rotation='vertical', fontsize=15)
     save_path = '/scratch/tl2546/NLP_project/BERT/output'
     fig.savefig(f'{save_path}/MRL_plot.png', dpi = 500, bbox_inches = 'tight')
     

@@ -188,28 +188,65 @@ def do_eval(eval_dataloader, output_dir):
     ## to track eval loss & acc
     loss_tracker = {'loss': [], 'count':[0], 'avg': []}
     metric_acc = evaluate.load("accuracy")
+    metric_roc_auc = evaluate.load("roc_auc")
+    with open(os.path.join(args.save_dir, f"ECE_{args.label}.txt"), "w") as file:
+        file.write("Confidence\tPrediction\tLabel\n")    
+        file.flush()
     
-    for batch in tqdm(eval_dataloader):
-        ids_more_toxic = batch['ids_more_toxic'].to(device)
-        mask_more_toxic = batch['mask_more_toxic'].to(device)
-        token_type_ids_more_toxic = batch['token_type_ids_more_toxic'].to(device)
-        ids_less_toxic = batch['ids_less_toxic'].to(device)
-        mask_less_toxic = batch['mask_less_toxic'].to(device)
-        token_type_ids_less_toxic = batch['token_type_ids_less_toxic'].to(device)
-        targets = batch['target'].to(device, dtype=torch.long)
+        for batch in tqdm(eval_dataloader):
+            ids_more_toxic = batch['ids_more_toxic'].to(device)
+            mask_more_toxic = batch['mask_more_toxic'].to(device)
+            token_type_ids_more_toxic = batch['token_type_ids_more_toxic'].to(device)
+            ids_less_toxic = batch['ids_less_toxic'].to(device)
+            mask_less_toxic = batch['mask_less_toxic'].to(device)
+            token_type_ids_less_toxic = batch['token_type_ids_less_toxic'].to(device)
+            targets = batch['target'].to(device, dtype=torch.long)
+            if args.eval_small:
+                more_toxic_labels = batch['labels_more_toxic'].to(device, dtype=torch.long)
+                less_toxic_labels = batch['labels_less_toxic'].to(device, dtype=torch.long)
 
-        with torch.no_grad():
-            more_toxic_single, more_toxic_outputs = model(ids_more_toxic, mask_more_toxic)
-            less_toxic_single, less_toxic_outputs = model(ids_less_toxic, mask_less_toxic)
+
+            with torch.no_grad():
+                more_toxic_single, more_toxic_outputs = model(ids_more_toxic, mask_more_toxic)
+                less_toxic_single, less_toxic_outputs = model(ids_less_toxic, mask_less_toxic)
+                if args.eval_small:
+                    ## more_toxic
+                    softmaxes = F.softmax(more_toxic_outputs, dim = 1)
+                    confidences, predictions = torch.max(softmaxes, 1, keepdim = True)
+                    predictions = predictions.to(dtype = torch.float32)
+
+                    metric_acc.add_batch(predictions=predictions, references= more_toxic_labels)
+                    metric_roc_auc.add_batch(prediction_scores =predictions.to(dtype = torch.int32), 
+                                             references = more_toxic_labels.to(dtype = torch.int32))
+                    file.write(f'{confidences.tolist()}\t{predictions.tolist()}\t{more_toxic_labels.tolist()}\n')
+                    file.flush()
+                    ## less_toxic
+                    softmaxes = F.softmax(less_toxic_outputs, dim = 1)
+                    confidences, predictions = torch.max(softmaxes, 1, keepdim = True)
+                    predictions = predictions.to(dtype = torch.float32)
+
+                    metric_acc.add_batch(predictions=predictions, references=less_toxic_labels)
+                    metric_roc_auc.add_batch(prediction_scores =predictions, references=less_toxic_labels)
+                    file.write(f'{confidences.tolist()}\t{predictions.tolist()}\t{less_toxic_labels.tolist()}\n')
+                    file.flush()
+
+                ## leave accuracy as metric only
+                loss = criterion(more_toxic_single, less_toxic_single, targets.unsqueeze(1))
+                loss_tracker['loss'].append(loss.item())
+                loss_tracker['count'][-1] += 1
+                loss_tracker['avg'].append(sum(loss_tracker['loss']) / loss_tracker['count'][-1])
+                metric_acc.add_batch(predictions= (more_toxic_single >= less_toxic_single).to(dtype = torch.float32), 
+                                     references=targets.unsqueeze(1))
+        if args.eval_small:
+            score_acc = metric_acc.compute()
+            score_roc_auc = metric_roc_auc.compute()
+            metric_name = ['accuracy', 'roc_auc']
+            score = dict(zip(metric_name, [score_acc, score_roc_auc]))
+        else:
+            score = metric_acc.compute()
             
-            ## leave accuracy as metric only
-            loss = criterion(more_toxic_single, less_toxic_single, targets.unsqueeze(1))
-            loss_tracker['loss'].append(loss.item())
-            loss_tracker['count'][-1] += 1
-            loss_tracker['avg'].append(sum(loss_tracker['loss']) / loss_tracker['count'][-1])
-            metric_acc.add_batch(predictions= (more_toxic_single >= less_toxic_single).to(dtype = torch.float32), 
-                                 references=targets.unsqueeze(1))
-    score = metric_acc.compute()
+        file.close()   
+
     with open(os.path.join(args.save_dir, "eval_metrics.pkl"), "wb") as pickle_file:
         pickle.dump(score, pickle_file)
 
@@ -263,14 +300,11 @@ if __name__ == "__main__":
     parser.add_argument("--train", action="store_true", help="train a model on the training data")
     parser.add_argument("--train_augmented", action="store_true", help="train a model on the augmented training data")
     parser.add_argument("--eval", action="store_true", help="evaluate model on the test set")
-    parser.add_argument("--eval_transformed", action="store_true", help="evaluate model on the transformed test set")
     parser.add_argument("--checkpoint", type = str, default = 'bert-base-cased')
     parser.add_argument("--save_dir", type = str, default = '/scratch/' + os.environ.get("USER", "") + '/out/')
     parser.add_argument("--model_dir", type=str, default="./out")
     parser.add_argument("--debug_train", action="store_true",
                         help="use a subset for training to debug your training loop")
-    parser.add_argument("--debug_transformation", action="store_true",
-                        help="print a few transformed examples for debugging")
     parser.add_argument("--debug_augmentation", action="store_true",
                         help="print a few augmented examples for debugging")
     parser.add_argument("--learning_rate", type=float, default=5e-5)
@@ -278,6 +312,8 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--T_max", type = int, default = 500)
     parser.add_argument("--label", type = str, default = "original")
+    parser.add_argument("--size", type = int, default = 10000)
+    parser.add_argument("--eval_small", action = 'store_true', help = "eval a model on the validation set")
 
     args = parser.parse_args()
     
@@ -314,7 +350,7 @@ if __name__ == "__main__":
 
     print('created BERTDataset class...')
     
-    small_train_dataset = small_data_set(train_dataset, 'train')
+    small_train_dataset = small_data_set(train_dataset, 'train', size = args.size)
     small_eval_dataset = small_data_set(val_dataset, 'test')
     small_train_tokenized = BERTDataset(more_toxic=small_train_dataset['more_toxic_text'],
                                           less_toxic= small_train_dataset['less_toxic_text'],
@@ -368,4 +404,9 @@ if __name__ == "__main__":
         # print(f"Marginal Ranking Loss: {mrl:.4f}")
         # for metric, value in score.items():
         #     print(f"{metric}: {value}")  
+        
+    if args.eval_small:
+        small_train_dataloader = DataLoader(small_train_tokenized, shuffle=True, num_workers = os.cpu_count(),
+                                            batch_size=args.batch_size)
+        do_eval(small_train_dataloader, args.model_dir)
 
